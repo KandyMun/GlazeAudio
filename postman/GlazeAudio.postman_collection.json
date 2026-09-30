@@ -1,0 +1,1005 @@
+{
+  "info": {
+    "_postman_id": "bdaab1a9-6476-4a0e-b8f8-7146a43460ca",
+    "name": "GlazeAudio API",
+    "description": "Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews) and the 400 / 404 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `newman run`). It creates its own album, song and review, then deletes them, so it can be re-run any number of times.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Albums",
+      "item": [
+        {
+          "name": "GET all albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Returns seeded albums\", () => { const b = pm.response.json(); pm.expect(b).to.be.an(\"array\").that.is.not.empty; pm.expect(b[0]).to.have.keys(\"id\",\"title\",\"artist\",\"releaseYear\",\"genre\",\"coverUrl\",\"songCount\",\"reviewCount\",\"averageRating\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST create album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Location header points to new album\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/albums/\" + b.id));",
+                  "pm.test(\"Body echoes the album\", () => pm.expect(b.title).to.eql(\"In Rainbows\"));",
+                  "pm.collectionVariables.set(\"albumId\", b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Alternative Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET one album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Correct album\", () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"albumId\"))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT update album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Genre updated\", () => pm.expect(pm.response.json().genre).to.eql(\"Art Rock\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Art Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Songs",
+      "item": [
+        {
+          "name": "POST create song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Location header set\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/songs/\" + b.id));",
+                  "pm.collectionVariables.set(\"songId\", b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weird Fishes/Arpeggi\",\n  \"trackNumber\": 4,\n  \"durationSeconds\": 318\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET all songs of album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Contains the new song\", () => pm.expect(pm.response.json().map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT update song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Title updated\", () => pm.expect(pm.response.json().title).to.eql(\"Weird Fishes / Arpeggi\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weird Fishes / Arpeggi\",\n  \"trackNumber\": 4,\n  \"durationSeconds\": 318\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reviews",
+      "item": [
+        {
+          "name": "POST create review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Overall rating is the average of 4 aspects\", () => pm.expect(b.overallRating).to.eql(4.5));",
+                  "pm.collectionVariables.set(\"reviewId\", b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET all reviews of song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Has one review\", () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT update review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Rating and comment updated\", () => { pm.expect(b.lyricsRating).to.eql(5); pm.expect(b.updatedAt).to.not.be.null; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 5,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"Changed my mind: the lyrics hold up too. One of the best songs on the album.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Error cases (400 / 404 / 422)",
+      "item": [
+        {
+          "name": "404 - album does not exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Problem details body\", () => pm.expect(pm.response.json().title).to.eql(\"Album not found.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "404 - song is not on this album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Hierarchy is enforced\", () => pm.expect(pm.response.json().title).to.eql(\"Song not found.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/1/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "1",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "The song exists, but belongs to a different album, so the nested URL is invalid."
+          }
+        },
+        {
+          "name": "404 - review does not exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "404 - update missing song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weird Fishes/Arpeggi\",\n  \"trackNumber\": 4,\n  \"durationSeconds\": 318\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "400 - malformed JSON",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"title\": \"Broken\", \"artist\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "400 - wrong value type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"title\": \"Oops\", \"trackNumber\": \"first\", \"durationSeconds\": 100 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "422 - invalid album fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Lists every invalid field\", () => pm.expect(pm.response.json().errors).to.have.keys(\"title\", \"releaseYear\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"artist\": \"Nobody\",\n  \"releaseYear\": 1500,\n  \"genre\": \"Pop\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "422 - review rating out of 0-5 range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"melodyRating reported\", () => pm.expect(pm.response.json().errors).to.have.property(\"melodyRating\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 4,\n  \"melodyRating\": 9,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Delete (204)",
+      "item": [
+        {
+          "name": "DELETE review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));",
+                  "pm.test(\"No body\", () => pm.expect(pm.response.text()).to.be.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "404 - deleted album is gone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "404 - delete it again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5080"
+    },
+    {
+      "key": "albumId",
+      "value": ""
+    },
+    {
+      "key": "songId",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    }
+  ]
+}

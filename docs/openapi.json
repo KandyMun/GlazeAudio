@@ -1,0 +1,1218 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "GlazeAudio API",
+        "description": "REST API for GlazeAudio \u2013 a platform for reviewing music. Resources are hierarchical: albums \u2192 songs \u2192 reviews.",
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:5080/"
+        }
+    ],
+    "paths": {
+        "/api/albums": {
+            "get": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "List all albums",
+                "description": "Returns every album with its song count, review count and average rating across all reviews of its songs.",
+                "operationId": "GetAlbums",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AlbumDto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "Create an album",
+                "description": "Creates a new album. Returns 201 with a Location header that points to the new album.",
+                "operationId": "CreateAlbum",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlbumRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlbumDto"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}": {
+            "get": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "Get one album",
+                "operationId": "GetAlbum",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlbumDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "Update an album",
+                "description": "Replaces all editable fields of the album.",
+                "operationId": "UpdateAlbum",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlbumRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AlbumDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "Delete an album",
+                "description": "Deletes the album together with all of its songs and their reviews. Returns 204 with no body.",
+                "operationId": "DeleteAlbum",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}/songs": {
+            "get": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "List songs of an album",
+                "description": "Returns the album's songs ordered by track number. 404 if the album does not exist.",
+                "operationId": "GetSongs",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SongDto"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Add a song to an album",
+                "operationId": "CreateSong",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SongRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SongDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}/songs/{songId}": {
+            "get": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Get one song",
+                "description": "404 if the album does not exist or the song does not belong to it.",
+                "operationId": "GetSong",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SongDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Update a song",
+                "operationId": "UpdateSong",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SongRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SongDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Delete a song",
+                "description": "Deletes the song and all of its reviews. Returns 204 with no body.",
+                "operationId": "DeleteSong",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}/songs/{songId}/reviews": {
+            "get": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "List reviews of a song",
+                "description": "Returns the song's reviews, newest first. 404 if the album or song does not exist, or the song is not on that album.",
+                "operationId": "GetReviews",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ReviewDto"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Review a song",
+                "description": "Each aspect (lyrics, melody, mood, expressiveness) is rated 0\u20135. A rating outside that range returns 422.",
+                "operationId": "CreateReview",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}/songs/{songId}/reviews/{reviewId}": {
+            "get": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get one review",
+                "operationId": "GetReview",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Edit a review",
+                "operationId": "UpdateReview",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Delete a review",
+                "description": "Used by administrators to remove harmful reviews. Returns 204 with no body.",
+                "operationId": "DeleteReview",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "songId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AlbumDto": {
+                "required": [
+                    "id",
+                    "title",
+                    "artist",
+                    "releaseYear",
+                    "genre",
+                    "coverUrl",
+                    "songCount",
+                    "reviewCount",
+                    "averageRating"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "artist": {
+                        "type": "string"
+                    },
+                    "releaseYear": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "genre": {
+                        "type": "string"
+                    },
+                    "coverUrl": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "songCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageRating": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    }
+                }
+            },
+            "AlbumRequest": {
+                "required": [
+                    "title",
+                    "artist",
+                    "releaseYear",
+                    "genre",
+                    "coverUrl"
+                ],
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "artist": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "releaseYear": {
+                        "maximum": 2100,
+                        "minimum": 1900,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "genre": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "coverUrl": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true
+                    }
+                }
+            },
+            "HttpValidationProblemDetails": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "detail": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "instance": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "ProblemDetails": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "detail": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "instance": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "ReviewDto": {
+                "required": [
+                    "id",
+                    "songId",
+                    "authorName",
+                    "lyricsRating",
+                    "melodyRating",
+                    "moodRating",
+                    "expressivenessRating",
+                    "overallRating",
+                    "comment",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "songId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "authorName": {
+                        "type": "string"
+                    },
+                    "lyricsRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "melodyRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "moodRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "expressivenessRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "overallRating": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                }
+            },
+            "ReviewRequest": {
+                "required": [
+                    "authorName",
+                    "lyricsRating",
+                    "melodyRating",
+                    "moodRating",
+                    "expressivenessRating",
+                    "comment"
+                ],
+                "type": "object",
+                "properties": {
+                    "authorName": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "lyricsRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "melodyRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "moodRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "expressivenessRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "comment": {
+                        "maxLength": 2000,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "SongDto": {
+                "required": [
+                    "id",
+                    "albumId",
+                    "title",
+                    "trackNumber",
+                    "durationSeconds",
+                    "reviewCount",
+                    "averageRating"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "albumId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "trackNumber": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "durationSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageRating": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    }
+                }
+            },
+            "SongRequest": {
+                "required": [
+                    "title",
+                    "trackNumber",
+                    "durationSeconds"
+                ],
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "trackNumber": {
+                        "maximum": 99,
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "durationSeconds": {
+                        "maximum": 7200,
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Albums"
+        },
+        {
+            "name": "Songs"
+        },
+        {
+            "name": "Reviews"
+        }
+    ]
+}
