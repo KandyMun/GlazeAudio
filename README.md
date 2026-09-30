@@ -59,33 +59,30 @@ All errors use the `application/problem+json` format (RFC 9457). Successful resp
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). On Arch: `yay -S azure-cli`
 - Postman (or `npm i -g newman` to run the tests from the terminal)
 
-### 1. Create the Azure SQL database (one time)
+### 1. Connect to the Azure SQL database
+
+The database already exists in Azure: server `glazeaudio-sql.database.windows.net`, database `glazeaudio-db`, resource group `glazeaudio-rg`, region Sweden Central. On each new device, run:
 
 ```bash
 ./infra/azure-sql-setup.sh
 ```
 
 The script:
-1. Logs in to Azure if needed.
-2. Creates the resource group `glazeaudio-rg`.
-3. Creates an Azure SQL server and the **free-offer** database `GlazeAudioDB`. It auto-pauses instead of billing when the monthly free limit runs out.
-4. Opens the firewall for your IP and for Azure services.
-5. Stores the connection string in **.NET user-secrets**, so no password ends up in git.
-6. Creates the `InitialCreate` EF Core migration on the first run. **Commit the `Migrations` folder.**
-7. Runs `dotnet ef database update`, which creates the tables and fills them with seed data.
-
-The generated server name and admin password are saved in `infra/.azure-sql.env`, which is git-ignored. Running the script again reuses the same server.
-
-If your subscription (e.g. Azure for Students) doesn't allow `northeurope`, choose another region with `LOCATION=swedencentral ./infra/azure-sql-setup.sh`.
+1. Asks for the SQL admin login and password. The password input is hidden.
+2. Stores the connection string in **.NET user-secrets**, outside the repo, so no password ends up in git.
+3. Adds a firewall rule for this device's IP (`dev-<hostname>`). This needs the Azure CLI and `az login`; without them, the script tells you how to add the IP in the portal.
+4. Restores packages, builds, and runs `dotnet ef database update`. That applies any new migrations and seeds the database if it's empty. Running it on a database that's already set up does nothing harmful.
 
 <details>
-<summary>Already have a database? Manual setup</summary>
+<summary>Manual setup (what the script does)</summary>
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:GlazeAudioDb" "Server=tcp:<server>.database.windows.net,1433;Initial Catalog=<db>;User ID=<user>;Password=<password>;Encrypt=True;Connection Timeout=60;" --project src/GlazeAudio.Api
-dotnet ef migrations add InitialCreate --project src/GlazeAudio.Api   # only if Migrations/ doesn't exist yet
+dotnet user-secrets set "ConnectionStrings:GlazeAudioDb" "Server=tcp:glazeaudio-sql.database.windows.net,1433;Initial Catalog=glazeaudio-db;User ID=<user>;Password=<password>;Encrypt=True;Connection Timeout=60;" --project src/GlazeAudio.Api
+dotnet build src/GlazeAudio.Api
 dotnet ef database update --project src/GlazeAudio.Api
 ```
+
+Then allow your IP: Azure Portal → SQL server `glazeaudio-sql` → Security → Networking → **Add your client IPv4 address** → Save.
 </details>
 
 ### 2. Run the API
