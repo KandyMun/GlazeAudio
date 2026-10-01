@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums?page=0&pageSize=500"
+method: GET
+queryParams:
+  page: "0"
+  pageSize: "500"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 400 Bad Request", () => pm.response.to.have.status(400));
+      pm.test("Both parameters reported", () => pm.expect(pm.response.json().errors).to.have.keys("page", "pageSize"));
+    language: text/javascript
+order: 12000

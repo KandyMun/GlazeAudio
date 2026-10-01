@@ -1,0 +1,12 @@
+$kind: http-request
+description: The URL comes from the previous response's _links.next - the client never builds it itself.
+url: "{{nextPageUrl}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test("Now on page 2 with a prev link", () => { pm.expect(b.page).to.eql(2); pm.expect(b._links).to.have.property("prev"); });
+    language: text/javascript
+order: 3000

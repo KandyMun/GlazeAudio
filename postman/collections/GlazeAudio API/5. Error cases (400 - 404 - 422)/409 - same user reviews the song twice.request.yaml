@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userId": {{userId}},
+      "lyricsRating": 4,
+      "melodyRating": 5,
+      "moodRating": 5,
+      "expressivenessRating": 4,
+      "comment": "The layered guitars build into something huge by the end."
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 409 Conflict", () => pm.response.to.have.status(409));
+      pm.test("Explains the conflict", () => pm.expect(pm.response.json().title).to.eql("Review already exists."));
+    language: text/javascript
+order: 11000

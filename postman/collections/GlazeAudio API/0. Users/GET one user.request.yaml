@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users/{{userId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      pm.test("Correct user", () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get("testUsername")));
+    language: text/javascript
+order: 3000

@@ -1,0 +1,13 @@
+$kind: http-request
+description: URL taken from _links.songs of the POST create album response.
+url: "{{albumSongsUrl}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test("Lists the album songs", () => pm.expect(b.items.map(s => s.id)).to.include(Number(pm.collectionVariables.get("songId"))));
+      pm.test("Each song links to its reviews", () => pm.expect(b.items[0]._links.reviews.href).to.include("/reviews"));
+    language: text/javascript
+order: 6000
