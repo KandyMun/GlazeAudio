@@ -57,7 +57,7 @@ All errors use the `application/problem+json` format (RFC 9457). Successful resp
 
 On Windows, see [Setup on Windows](#setup-on-windows) instead.
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download). On Arch: `sudo pacman -S dotnet-sdk aspnet-runtime dotnet-targeting-pack aspnet-targeting-pack` (without the targeting packs, the build fails with "Prune Package data not found")
+- [.NET 10 SDK](https://dotnet.microsoft.com/download). On Arch: `sudo pacman -S dotnet-sdk aspnet-runtime dotnet-targeting-pack aspnet-targeting-pack`
 - EF Core CLI: `dotnet tool install --global dotnet-ef`
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). On Arch: `yay -S azure-cli`
 - Postman 12 (`yay -S postman-bin`), or the Postman CLI (`npm i -g postman-cli`) to run the tests from the terminal
