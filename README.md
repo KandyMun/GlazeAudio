@@ -6,7 +6,7 @@ This repository currently contains the **GlazeAudio REST API**: ASP.NET Core 10 
 ```
 GlazeAudio/
 ├── src/GlazeAudio.Api/     ASP.NET Core API (endpoints, EF Core model, seed data)
-├── infra/                  azure-sql-setup.sh – creates the Azure SQL database
+├── infra/                  azure-sql-setup.sh / .ps1 – connect a device to the Azure SQL database
 ├── postman/                Postman v3 collection + environments (demo & tests)
 └── docs/                   openapi.json (exported spec), postman/ (JSON collection for Import)
 ```
@@ -53,8 +53,11 @@ All errors use the `application/problem+json` format (RFC 9457). Successful resp
 
 ## Getting started
 
-### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download). On Arch: `sudo pacman -S dotnet-sdk aspnet-runtime`
+### Prerequisites (Linux)
+
+On Windows, see [Setup on Windows](#setup-on-windows) instead.
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download). On Arch: `sudo pacman -S dotnet-sdk aspnet-runtime dotnet-targeting-pack aspnet-targeting-pack` (without the targeting packs, the build fails with "Prune Package data not found")
 - EF Core CLI: `dotnet tool install --global dotnet-ef`
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). On Arch: `yay -S azure-cli`
 - Postman 12 (`yay -S postman-bin`), or the Postman CLI (`npm i -g postman-cli`) to run the tests from the terminal
@@ -131,6 +134,61 @@ The collection runs 25 requests with 56 assertions in about a second:
 | 5. Delete | DELETE review / song / album (204), then 404 for the deleted album |
 
 The collection creates its own album, song and review and deletes them at the end, so you can run it as many times as you like.
+
+## Setup on Windows
+
+Everything works the same on Windows. Only the install commands and the setup script differ. Run these in **PowerShell** or **Windows Terminal**.
+
+### Prerequisites
+
+```powershell
+winget install Git.Git
+winget install Microsoft.DotNet.SDK.10
+winget install Microsoft.AzureCLI          # optional, lets the script add the firewall rule for you
+winget install Postman.Postman
+```
+
+**Close and reopen the terminal** so the new tools are on your `PATH`, then:
+
+```powershell
+dotnet tool install --global dotnet-ef
+az login                                   # only if you installed the Azure CLI
+```
+
+### 1. Connect to the database
+
+From the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File infra\azure-sql-setup.ps1
+```
+
+This does the same as `azure-sql-setup.sh`: it asks for the SQL login, saves the connection string in user-secrets (`%APPDATA%\Microsoft\UserSecrets`), adds a firewall rule for this PC, builds, and applies the migrations. `-ExecutionPolicy Bypass` is needed because Windows blocks unsigned scripts by default; it applies only to this one run.
+
+If you have Git Bash, `./infra/azure-sql-setup.sh` works there too.
+
+### 2. Run the API
+
+```powershell
+dotnet run --project src\GlazeAudio.Api
+```
+
+Then open http://localhost:5080/docs. If you use **Visual Studio** or **Rider**, open `GlazeAudio.slnx` and start the **http** profile. It uses the same port, 5080.
+
+### 3. Run the Postman demo
+
+The steps are the same as on Linux (see [Run the Postman demo](#3-run-the-postman-demo)). To run it from the terminal instead, install Node.js first (`winget install OpenJS.NodeJS.LTS`), then:
+
+```powershell
+npm i -g postman-cli
+postman collection run "postman\collections\GlazeAudio API" -e "postman\environments\GlazeAudio - Local.environment.yaml"
+```
+
+### Windows troubleshooting
+
+- **`dotnet` or `dotnet ef` is not recognized:** reopen the terminal after installing. dotnet-ef lives in `%USERPROFILE%\.dotnet\tools`.
+- **"Client with IP address … is not allowed":** the firewall rule wasn't added. Run `az login` and re-run the script, or add your IP in the portal (SQL server → Security → Networking).
+- **Port 5080 already in use:** stop the other `dotnet` process, or change `applicationUrl` in `src\GlazeAudio.Api\Properties\launchSettings.json` and update `baseUrl` in the Postman environment to match.
 
 ## Project structure (API)
 
