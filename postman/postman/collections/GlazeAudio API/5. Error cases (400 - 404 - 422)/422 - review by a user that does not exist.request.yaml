@@ -7,9 +7,9 @@ body:
   type: json
   content: |-
     {
-      "authorName": "mantas",
+      "userId": 999999,
       "lyricsRating": 4,
-      "melodyRating": 9,
+      "melodyRating": 5,
       "moodRating": 5,
       "expressivenessRating": 4,
       "comment": "The layered guitars build into something huge by the end."
@@ -18,6 +18,6 @@ scripts:
   - type: afterResponse
     code: |-
       pm.test("Status 422 Unprocessable Entity", () => pm.response.to.have.status(422));
-      pm.test("melodyRating reported", () => pm.expect(pm.response.json().errors).to.have.property("melodyRating"));
+      pm.test("userId reported", () => pm.expect(pm.response.json().errors).to.have.property("userId"));
     language: text/javascript
-order: 8000
+order: 10000

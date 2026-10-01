@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "mantas",
+      "email": "someone.else@example.com",
+      "password": "Listening123!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 409 Conflict", () => pm.response.to.have.status(409));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      pm.test("Explains the conflict", () => pm.expect(pm.response.json().title).to.eql("Username already taken."));
+    language: text/javascript
+order: 8000

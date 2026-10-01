@@ -1,0 +1,15 @@
+$kind: http-request
+description: Dashboard-style resource assembled from Album, Song and Review.
+url: "{{baseUrl}}/api/albums/{{albumId}}/overview"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Built from 3 entities", () => { pm.expect(b.album.id).to.eql(Number(pm.collectionVariables.get("albumId"))); pm.expect(b.songs).to.have.lengthOf(1); pm.expect(b.latestReviews).to.have.lengthOf(1); });
+      pm.test("Has rating statistics", () => { pm.expect(b.stats.reviewCount).to.eql(1); pm.expect(b.stats.averageRating).to.eql(4.75); pm.expect(b.stats.aspectAverages).to.include.keys("lyrics","melody","mood","expressiveness"); });
+      pm.test("Top-rated song is the reviewed song", () => pm.expect(b.topRatedSong.id).to.eql(Number(pm.collectionVariables.get("songId"))));
+    language: text/javascript
+order: 11000

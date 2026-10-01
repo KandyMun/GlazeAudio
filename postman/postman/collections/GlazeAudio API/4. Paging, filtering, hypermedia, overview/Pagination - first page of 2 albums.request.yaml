@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums?page=1&pageSize=2"
+method: GET
+queryParams:
+  page: "1"
+  pageSize: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Page metadata", () => { pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(2); pm.expect(b.items.length).to.be.at.most(2); pm.expect(b.totalPages).to.eql(Math.ceil(b.totalCount / 2)); });
+      pm.test("Has next link, no prev link", () => { pm.expect(b._links).to.have.property("next"); pm.expect(b._links).to.not.have.property("prev"); });
+      pm.collectionVariables.set("nextPageUrl", b._links.next.href);
+    language: text/javascript
+order: 2000

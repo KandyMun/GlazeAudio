@@ -1,10 +1,14 @@
 $kind: collection
 description: |-
-  Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews) and the 400 / 404 / 422 / 201 / 204 cases.
+  Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews), user accounts linked to their reviews, pagination, filtering, hypermedia links, the album overview, and the 400 / 404 / 422 / 201 / 204 cases.
 
-  Run the whole collection with the Runner (or `newman run`). It creates its own album, song and review, then deletes them, so it can be re-run any number of times.
+  Run the whole collection with the Runner (or `postman collection run`). It creates its own user, album, song and review, then deletes them, so it can be re-run any number of times.
 variables:
   baseUrl: http://localhost:5080
   albumId: ""
   songId: ""
   reviewId: ""
+  userId: ""
+  testUsername: ""
+  albumSongsUrl: ""
+  nextPageUrl: ""

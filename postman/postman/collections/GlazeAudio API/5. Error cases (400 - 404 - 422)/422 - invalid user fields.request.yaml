@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "no spaces allowed",
+      "email": "not-an-email",
+      "password": "short"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 422 Unprocessable Entity", () => pm.response.to.have.status(422));
+      pm.test("Lists every invalid field", () => pm.expect(pm.response.json().errors).to.have.keys("username", "email", "password"));
+    language: text/javascript
+order: 9000

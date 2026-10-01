@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews?author={{testUsername}}&minRating=4"
+method: GET
+queryParams:
+  author: "{{testUsername}}"
+  minRating: "4"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Only matching reviews", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(r => { pm.expect(r.username).to.eql(pm.collectionVariables.get("testUsername")); pm.expect(r.overallRating).to.be.at.least(4); }); });
+    language: text/javascript
+order: 8000

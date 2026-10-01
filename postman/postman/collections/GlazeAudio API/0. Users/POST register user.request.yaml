@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{testUsername}}",
+      "email": "{{testUsername}}@example.com",
+      "password": "Listening123!",
+      "bio": "Created by the Postman test run."
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      // Unique name per run, so the collection can be re-run without 409 conflicts
+      pm.collectionVariables.set("testUsername", "tester_" + Date.now());
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("Status 201 Created", () => pm.response.to.have.status(201));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Location header points to new user", () => pm.expect(pm.response.headers.get("Location")).to.include("/api/users/" + b.id));
+      pm.test("Password is never returned", () => { pm.expect(b).to.not.have.property("password"); pm.expect(b).to.not.have.property("passwordHash"); });
+      pm.test("New accounts get the User role", () => pm.expect(b.role).to.eql("User"));
+      pm.collectionVariables.set("userId", b.id);
+    language: text/javascript
+order: 1000

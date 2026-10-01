@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums?search=rainbows"
+method: GET
+queryParams:
+  search: rainbows
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Finds the album created by this run", () => pm.expect(pm.response.json().items.map(a => a.id)).to.include(Number(pm.collectionVariables.get("albumId"))));
+    language: text/javascript
+order: 5000

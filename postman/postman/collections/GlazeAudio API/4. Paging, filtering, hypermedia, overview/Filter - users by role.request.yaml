@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users?role=admin"
+method: GET
+queryParams:
+  role: admin
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Only admins", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(u => pm.expect(u.role).to.eql("Admin")); });
+    language: text/javascript
+order: 9000

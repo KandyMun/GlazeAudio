@@ -1,0 +1,14 @@
+$kind: http-request
+description: A user's profile view of their reviews, built from User, Review, Song and Album.
+url: "{{baseUrl}}/api/users/{{userId}}/reviews"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Lists the review with its song and album", () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].albumTitle).to.eql("In Rainbows"); pm.expect(b.items[0].songTitle).to.eql("Weird Fishes / Arpeggi"); });
+      pm.test("Links back to the review", () => pm.expect(b.items[0]._links.self.href).to.include("/reviews/" + pm.collectionVariables.get("reviewId")));
+    language: text/javascript
+order: 10000

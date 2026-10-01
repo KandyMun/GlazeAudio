@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs?minDuration=300"
+method: GET
+queryParams:
+  minDuration: "300"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("All songs are at least 300 s long", () => pm.response.json().items.forEach(s => pm.expect(s.durationSeconds).to.be.at.least(300)));
+    language: text/javascript
+order: 7000

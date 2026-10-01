@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums?genre=rock&fromYear=1990"
+method: GET
+queryParams:
+  genre: rock
+  fromYear: "1990"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test("Every album matches the filter", () => { pm.expect(b.items).to.not.be.empty; b.items.forEach(a => { pm.expect(a.genre.toLowerCase()).to.include("rock"); pm.expect(a.releaseYear).to.be.at.least(1990); }); });
+      pm.test("Filters are kept in paging links", () => pm.expect(b._links.self.href).to.include("genre=rock"));
+    language: text/javascript
+order: 4000

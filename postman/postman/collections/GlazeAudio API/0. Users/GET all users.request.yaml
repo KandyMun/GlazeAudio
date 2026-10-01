@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Returns a page of users", () => { pm.expect(b.items).to.not.be.empty; pm.expect(b).to.include.keys("page","pageSize","totalCount","totalPages","_links"); });
+      pm.test("Each user links to their reviews", () => pm.expect(b.items[0]._links.reviews.href).to.include("/reviews"));
+    language: text/javascript
+order: 2000

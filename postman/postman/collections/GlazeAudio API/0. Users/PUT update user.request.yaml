@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users/{{userId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{testUsername}}",
+      "email": "{{testUsername}}@example.com",
+      "bio": "Mostly reviews Radiohead.",
+      "role": "User"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      pm.test("Bio updated", () => pm.expect(pm.response.json().bio).to.eql("Mostly reviews Radiohead."));
+    language: text/javascript
+order: 4000

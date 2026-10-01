@@ -7,7 +7,7 @@ body:
   type: json
   content: |-
     {
-      "authorName": "mantas",
+      "userId": {{userId}},
       "lyricsRating": 4,
       "melodyRating": 5,
       "moodRating": 5,
@@ -21,6 +21,7 @@ scripts:
       pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
       const b = pm.response.json();
       pm.test("Overall rating is the average of 4 aspects", () => pm.expect(b.overallRating).to.eql(4.5));
+      pm.test("Linked to its author", () => { pm.expect(b.userId).to.eql(Number(pm.collectionVariables.get("userId"))); pm.expect(b.username).to.eql(pm.collectionVariables.get("testUsername")); pm.expect(b._links.author.href).to.include("/api/users/" + b.userId); });
       pm.collectionVariables.set("reviewId", b.id);
     language: text/javascript
 order: 1000

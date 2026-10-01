@@ -1,11 +1,12 @@
 $kind: http-request
-url: "{{baseUrl}}/api/albums/{{albumId}}/songs"
+description: A client can start here and discover the rest of the API by following _links.
+url: "{{baseUrl}}/api"
 method: GET
 scripts:
   - type: afterResponse
     code: |-
       pm.test("Status 200 OK", () => pm.response.to.have.status(200));
       pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
-      pm.test("Contains the new song", () => pm.expect(pm.response.json().items.map(s => s.id)).to.include(Number(pm.collectionVariables.get("songId"))));
+      pm.test("Links to the albums collection", () => pm.expect(pm.response.json()._links.albums.href).to.include("/api/albums"));
     language: text/javascript
-order: 2000
+order: 1000
