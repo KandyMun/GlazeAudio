@@ -21,6 +21,8 @@ scripts:
       const b = pm.response.json();
       pm.test("Location header points to new album", () => pm.expect(pm.response.headers.get("Location")).to.include("/api/albums/" + b.id));
       pm.test("Body echoes the album", () => pm.expect(b.title).to.eql("In Rainbows"));
+      pm.test("Response has hypermedia links", () => pm.expect(b._links.songs.href).to.include("/api/albums/" + b.id + "/songs"));
       pm.collectionVariables.set("albumId", b.id);
+      pm.collectionVariables.set("albumSongsUrl", b._links.songs.href);
     language: text/javascript
 order: 2000

@@ -2,7 +2,7 @@
     "openapi": "3.0.1",
     "info": {
         "title": "GlazeAudio API",
-        "description": "REST API for GlazeAudio \u2013 a platform for reviewing music. Resources are hierarchical: albums \u2192 songs \u2192 reviews.",
+        "description": "REST API for GlazeAudio \u2013 a platform for reviewing music. Resources are hierarchical: albums \u2192 songs \u2192 reviews. Reviews are written by users.",
         "version": "v1"
     },
     "servers": [
@@ -11,24 +11,114 @@
         }
     ],
     "paths": {
-        "/api/albums": {
+        "/api": {
             "get": {
                 "tags": [
-                    "Albums"
+                    "Root"
                 ],
-                "summary": "List all albums",
-                "description": "Returns every album with its song count, review count and average rating across all reviews of its songs.",
-                "operationId": "GetAlbums",
+                "summary": "API entry point with links to the main resources",
+                "operationId": "GetApiRoot",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/AlbumDto"
-                                    }
+                                    "$ref": "#/components/schemas/ApiRoot"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums": {
+            "get": {
+                "tags": [
+                    "Albums"
+                ],
+                "summary": "List albums (paged, filterable)",
+                "description": "Returns one page of albums with their song count, review count and average rating. Filter with search, artist, genre, fromYear and toYear. Paging metadata and first/prev/next/last links are included in the response.",
+                "operationId": "GetAlbums",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number, starting at 1. Default 1.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "Items per page, 1\u201350. Default 10.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Text to find in the album title or artist (case-insensitive).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "artist",
+                        "in": "query",
+                        "description": "Only albums whose artist contains this text.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "genre",
+                        "in": "query",
+                        "description": "Only albums whose genre contains this text, e.g. 'rock'.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fromYear",
+                        "in": "query",
+                        "description": "Only albums released in or after this year.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "toYear",
+                        "in": "query",
+                        "description": "Only albums released in or before this year.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PagedResultOfAlbumDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
                                 }
                             }
                         }
@@ -233,14 +323,14 @@
                 }
             }
         },
-        "/api/albums/{albumId}/songs": {
+        "/api/albums/{albumId}/overview": {
             "get": {
                 "tags": [
-                    "Songs"
+                    "Albums"
                 ],
-                "summary": "List songs of an album",
-                "description": "Returns the album's songs ordered by track number. 404 if the album does not exist.",
-                "operationId": "GetSongs",
+                "summary": "Album overview (album + songs + reviews)",
+                "description": "A dashboard-style resource built from three entities: the album, its songs with their ratings, rating statistics per aspect across all reviews, the top-rated song and the latest reviews.",
+                "operationId": "GetAlbumOverview",
                 "parameters": [
                     {
                         "name": "albumId",
@@ -258,10 +348,104 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/SongDto"
-                                    }
+                                    "$ref": "#/components/schemas/AlbumOverviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/albums/{albumId}/songs": {
+            "get": {
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "List songs of an album (paged, filterable)",
+                "description": "Returns one page of the album's songs ordered by track number. Filter with search, minDuration and maxDuration. 404 if the album does not exist.",
+                "operationId": "GetSongs",
+                "parameters": [
+                    {
+                        "name": "albumId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number, starting at 1. Default 1.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "Items per page, 1\u201350. Default 10.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Text to find in the song title (case-insensitive).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "minDuration",
+                        "in": "query",
+                        "description": "Only songs at least this long (seconds).",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "maxDuration",
+                        "in": "query",
+                        "description": "Only songs at most this long (seconds).",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PagedResultOfSongDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
                                 }
                             }
                         }
@@ -528,8 +712,8 @@
                 "tags": [
                     "Reviews"
                 ],
-                "summary": "List reviews of a song",
-                "description": "Returns the song's reviews, newest first. 404 if the album or song does not exist, or the song is not on that album.",
+                "summary": "List reviews of a song (paged, filterable)",
+                "description": "Returns one page of the song's reviews, newest first. Filter with author (username), userId, minRating and maxRating (overall rating = average of the 4 aspects). 404 if the album or song does not exist, or the song is not on that album.",
                 "operationId": "GetReviews",
                 "parameters": [
                     {
@@ -549,6 +733,59 @@
                             "type": "integer",
                             "format": "int32"
                         }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number, starting at 1. Default 1.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "Items per page, 1\u201350. Default 10.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "author",
+                        "in": "query",
+                        "description": "Only reviews by this author's username (exact match, case-insensitive).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "query",
+                        "description": "Only reviews written by this user id.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "minRating",
+                        "in": "query",
+                        "description": "Only reviews whose overall rating (average of the 4 aspects) is at least this value, 0\u20135.",
+                        "schema": {
+                            "type": "number",
+                            "format": "double"
+                        }
+                    },
+                    {
+                        "name": "maxRating",
+                        "in": "query",
+                        "description": "Only reviews whose overall rating is at most this value, 0\u20135.",
+                        "schema": {
+                            "type": "number",
+                            "format": "double"
+                        }
                     }
                 ],
                 "responses": {
@@ -557,10 +794,17 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ReviewDto"
-                                    }
+                                    "$ref": "#/components/schemas/PagedResultOfReviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
                                 }
                             }
                         }
@@ -582,7 +826,7 @@
                     "Reviews"
                 ],
                 "summary": "Review a song",
-                "description": "Each aspect (lyrics, melody, mood, expressiveness) is rated 0\u20135. A rating outside that range returns 422.",
+                "description": "Each aspect (lyrics, melody, mood, expressiveness) is rated 0\u20135. The author is given as userId (until authentication is added). 422 if a rating is out of range or the user does not exist; 409 if this user has already reviewed the song.",
                 "operationId": "CreateReview",
                 "parameters": [
                     {
@@ -608,7 +852,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ReviewRequest"
+                                "$ref": "#/components/schemas/CreateReviewRequest"
                             }
                         }
                     },
@@ -647,6 +891,16 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -722,6 +976,7 @@
                     "Reviews"
                 ],
                 "summary": "Edit a review",
+                "description": "Replaces the ratings and comment. The author cannot be changed.",
                 "operationId": "UpdateReview",
                 "parameters": [
                     {
@@ -756,7 +1011,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ReviewRequest"
+                                "$ref": "#/components/schemas/UpdateReviewRequest"
                             }
                         }
                     },
@@ -857,6 +1112,371 @@
                     }
                 }
             }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List users (paged, filterable)",
+                "description": "Filter with search (username or email) and role (User / Admin).",
+                "operationId": "GetUsers",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number, starting at 1. Default 1.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "Items per page, 1\u201350. Default 10.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Text to find in the username or email (case-insensitive).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "description": "Only users with this role: User or Admin.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PagedResultOfUserDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Register a user",
+                "description": "Creates an account with the User role. The password is stored as a salted hash and never returned. 409 if the username or email is already taken.",
+                "operationId": "CreateUser",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateUserRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserDto"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{userId}": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get one user",
+                "operationId": "GetUser",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update a user",
+                "description": "Replaces username, email, bio and role. 409 if the new username or email is already taken.",
+                "operationId": "UpdateUser",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Delete a user",
+                "description": "Deletes the account together with all reviews it wrote. Returns 204 with no body.",
+                "operationId": "DeleteUser",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{userId}/reviews": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List a user's reviews (paged)",
+                "description": "Every review the user has written, newest first, with the song and album each one belongs to. Filter with minRating.",
+                "operationId": "GetUserReviews",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number, starting at 1. Default 1.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "pageSize",
+                        "in": "query",
+                        "description": "Items per page, 1\u201350. Default 10.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    {
+                        "name": "minRating",
+                        "in": "query",
+                        "description": "Only reviews whose overall rating is at least this value, 0\u20135.",
+                        "schema": {
+                            "type": "number",
+                            "format": "double"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PagedResultOfUserReviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -908,6 +1528,49 @@
                         "type": "number",
                         "format": "double",
                         "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                }
+            },
+            "AlbumOverviewDto": {
+                "required": [
+                    "album",
+                    "stats",
+                    "songs",
+                    "topRatedSong",
+                    "latestReviews"
+                ],
+                "type": "object",
+                "properties": {
+                    "album": {
+                        "$ref": "#/components/schemas/AlbumSummary"
+                    },
+                    "stats": {
+                        "$ref": "#/components/schemas/AlbumStats"
+                    },
+                    "songs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OverviewSong"
+                        }
+                    },
+                    "topRatedSong": {
+                        "$ref": "#/components/schemas/OverviewSong2"
+                    },
+                    "latestReviews": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OverviewReview"
+                        }
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
                     }
                 }
             },
@@ -955,80 +1618,46 @@
                     }
                 }
             },
-            "HttpValidationProblemDetails": {
+            "AlbumStats": {
+                "required": [
+                    "songCount",
+                    "reviewCount",
+                    "totalDurationSeconds",
+                    "averageRating",
+                    "aspectAverages"
+                ],
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "title": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "status": {
+                    "songCount": {
                         "type": "integer",
-                        "format": "int32",
+                        "format": "int32"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalDurationSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageRating": {
+                        "type": "number",
+                        "format": "double",
                         "nullable": true
                     },
-                    "detail": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "instance": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "errors": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
+                    "aspectAverages": {
+                        "$ref": "#/components/schemas/AspectAverages"
                     }
                 }
             },
-            "ProblemDetails": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "title": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "status": {
-                        "type": "integer",
-                        "format": "int32",
-                        "nullable": true
-                    },
-                    "detail": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "instance": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                }
-            },
-            "ReviewDto": {
+            "AlbumSummary": {
                 "required": [
                     "id",
-                    "songId",
-                    "authorName",
-                    "lyricsRating",
-                    "melodyRating",
-                    "moodRating",
-                    "expressivenessRating",
-                    "overallRating",
-                    "comment",
-                    "createdAt",
-                    "updatedAt"
+                    "title",
+                    "artist",
+                    "releaseYear",
+                    "genre",
+                    "coverUrl"
                 ],
                 "type": "object",
                 "properties": {
@@ -1036,50 +1665,77 @@
                         "type": "integer",
                         "format": "int32"
                     },
-                    "songId": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "authorName": {
+                    "title": {
                         "type": "string"
                     },
-                    "lyricsRating": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "melodyRating": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "moodRating": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "expressivenessRating": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "overallRating": {
-                        "type": "number",
-                        "format": "double"
-                    },
-                    "comment": {
+                    "artist": {
                         "type": "string"
                     },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
+                    "releaseYear": {
+                        "type": "integer",
+                        "format": "int32"
                     },
-                    "updatedAt": {
+                    "genre": {
+                        "type": "string"
+                    },
+                    "coverUrl": {
                         "type": "string",
-                        "format": "date-time",
                         "nullable": true
                     }
                 }
             },
-            "ReviewRequest": {
+            "ApiRoot": {
                 "required": [
-                    "authorName",
+                    "name",
+                    "version"
+                ],
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                }
+            },
+            "AspectAverages": {
+                "required": [
+                    "lyrics",
+                    "melody",
+                    "mood",
+                    "expressiveness"
+                ],
+                "type": "object",
+                "properties": {
+                    "lyrics": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "melody": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "mood": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "expressiveness": {
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "nullable": true
+            },
+            "CreateReviewRequest": {
+                "required": [
+                    "userId",
                     "lyricsRating",
                     "melodyRating",
                     "moodRating",
@@ -1088,10 +1744,11 @@
                 ],
                 "type": "object",
                 "properties": {
-                    "authorName": {
-                        "maxLength": 100,
-                        "minLength": 1,
-                        "type": "string",
+                    "userId": {
+                        "maximum": 2147483647,
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int32",
                         "nullable": true
                     },
                     "lyricsRating": {
@@ -1127,6 +1784,515 @@
                         "minLength": 1,
                         "type": "string",
                         "nullable": true
+                    }
+                }
+            },
+            "CreateUserRequest": {
+                "required": [
+                    "username",
+                    "email",
+                    "password",
+                    "bio"
+                ],
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "maxLength": 50,
+                        "minLength": 3,
+                        "pattern": "^[A-Za-z0-9_.-]+$",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "email": {
+                        "maxLength": 200,
+                        "minLength": 0,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "password": {
+                        "maxLength": 100,
+                        "minLength": 8,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "bio": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "HttpValidationProblemDetails": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "detail": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "instance": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "Link": {
+                "required": [
+                    "href"
+                ],
+                "type": "object",
+                "properties": {
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string",
+                        "default": "GET"
+                    }
+                }
+            },
+            "OverviewReview": {
+                "required": [
+                    "id",
+                    "songId",
+                    "songTitle",
+                    "userId",
+                    "username",
+                    "overallRating",
+                    "comment",
+                    "createdAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "songId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "songTitle": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "overallRating": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "OverviewSong": {
+                "required": [
+                    "id",
+                    "trackNumber",
+                    "title",
+                    "durationSeconds",
+                    "reviewCount",
+                    "averageRating"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "trackNumber": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "durationSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageRating": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                }
+            },
+            "OverviewSong2": {
+                "required": [
+                    "id",
+                    "trackNumber",
+                    "title",
+                    "durationSeconds",
+                    "reviewCount",
+                    "averageRating"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "trackNumber": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "durationSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "averageRating": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                },
+                "nullable": true
+            },
+            "PagedResultOfAlbumDto": {
+                "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "totalCount",
+                    "totalPages"
+                ],
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AlbumDto"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "PagedResultOfReviewDto": {
+                "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "totalCount",
+                    "totalPages"
+                ],
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReviewDto"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "PagedResultOfSongDto": {
+                "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "totalCount",
+                    "totalPages"
+                ],
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SongDto"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "PagedResultOfUserDto": {
+                "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "totalCount",
+                    "totalPages"
+                ],
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UserDto"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "PagedResultOfUserReviewDto": {
+                "required": [
+                    "items",
+                    "page",
+                    "pageSize",
+                    "totalCount",
+                    "totalPages"
+                ],
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UserReviewDto"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                }
+            },
+            "ProblemDetails": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "detail": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "instance": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "ReviewDto": {
+                "required": [
+                    "id",
+                    "songId",
+                    "userId",
+                    "username",
+                    "lyricsRating",
+                    "melodyRating",
+                    "moodRating",
+                    "expressivenessRating",
+                    "overallRating",
+                    "comment",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "songId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "userId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "lyricsRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "melodyRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "moodRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "expressivenessRating": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "overallRating": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
                     }
                 }
             },
@@ -1169,6 +2335,12 @@
                         "type": "number",
                         "format": "double",
                         "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
                     }
                 }
             },
@@ -1201,10 +2373,198 @@
                         "nullable": true
                     }
                 }
+            },
+            "UpdateReviewRequest": {
+                "required": [
+                    "lyricsRating",
+                    "melodyRating",
+                    "moodRating",
+                    "expressivenessRating",
+                    "comment"
+                ],
+                "type": "object",
+                "properties": {
+                    "lyricsRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "melodyRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "moodRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "expressivenessRating": {
+                        "maximum": 5,
+                        "minimum": 0,
+                        "type": "integer",
+                        "format": "int32",
+                        "nullable": true
+                    },
+                    "comment": {
+                        "maxLength": 2000,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "UpdateUserRequest": {
+                "required": [
+                    "username",
+                    "email",
+                    "bio",
+                    "role"
+                ],
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "maxLength": 50,
+                        "minLength": 3,
+                        "pattern": "^[A-Za-z0-9_.-]+$",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "email": {
+                        "maxLength": 200,
+                        "minLength": 0,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "bio": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "role": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "UserDto": {
+                "required": [
+                    "id",
+                    "username",
+                    "email",
+                    "role",
+                    "bio",
+                    "createdAt",
+                    "reviewCount"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "bio": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "reviewCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                }
+            },
+            "UserReviewDto": {
+                "required": [
+                    "id",
+                    "albumId",
+                    "albumTitle",
+                    "albumArtist",
+                    "songId",
+                    "songTitle",
+                    "overallRating",
+                    "comment",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "albumId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "albumTitle": {
+                        "type": "string"
+                    },
+                    "albumArtist": {
+                        "type": "string"
+                    },
+                    "songId": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "songTitle": {
+                        "type": "string"
+                    },
+                    "overallRating": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "_links": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Link"
+                        }
+                    }
+                }
             }
         }
     },
     "tags": [
+        {
+            "name": "Root"
+        },
         {
             "name": "Albums"
         },
@@ -1213,6 +2573,9 @@
         },
         {
             "name": "Reviews"
+        },
+        {
+            "name": "Users"
         }
     ]
 }

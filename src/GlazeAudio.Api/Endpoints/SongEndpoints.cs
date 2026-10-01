@@ -14,9 +14,12 @@ public static class SongEndpoints
 
         group.MapGet("/", GetAll)
             .WithName("GetSongs")
-            .WithSummary("List songs of an album")
-            .WithDescription("Returns the album's songs ordered by track number. 404 if the album does not exist.")
-            .Produces<List<SongDto>>()
+            .WithSummary("List songs of an album (paged, filterable)")
+            .WithDescription(
+                "Returns one page of the album's songs ordered by track number. Filter with search, minDuration " +
+                "and maxDuration. 404 if the album does not exist.")
+            .Produces<PagedResult<SongDto>>()
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/{songId:int}", GetById)
@@ -56,26 +59,43 @@ public static class SongEndpoints
             s.Reviews.Count,
             s.Reviews.Average(r => (double?)(r.LyricsRating + r.MelodyRating + r.MoodRating + r.ExpressivenessRating) / 4.0)));
 
-    private static async Task<IResult> GetAll(int albumId, GlazeAudioDbContext db, CancellationToken ct)
+    private static SongDto WithLinks(SongDto song, HttpRequest request) =>
+        song with { Links = ApiLinks.Song(request, song.AlbumId, song.Id) };
+
+    private static async Task<IResult> GetAll(int albumId, [AsParameters] SongQuery query, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
+        if (Paging.Validate(query.Page, query.PageSize, out var page, out var pageSize) is { } invalid)
+            return invalid;
         if (!await db.Albums.AnyAsync(a => a.Id == albumId, ct))
             return ApiProblems.NotFound("Album", albumId);
 
-        var songs = await Project(db.Songs.Where(s => s.AlbumId == albumId).OrderBy(s => s.TrackNumber).ThenBy(s => s.Id))
+        var songs = db.Songs.AsNoTracking().Where(s => s.AlbumId == albumId);
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim().ToLower();
+            songs = songs.Where(s => s.Title.ToLower().Contains(term));
+        }
+        if (query.MinDuration is { } minDuration) songs = songs.Where(s => s.DurationSeconds >= minDuration);
+        if (query.MaxDuration is { } maxDuration) songs = songs.Where(s => s.DurationSeconds <= maxDuration);
+
+        var total = await songs.CountAsync(ct);
+        var items = await Project(songs.OrderBy(s => s.TrackNumber).ThenBy(s => s.Id).Skip((page - 1) * pageSize).Take(pageSize))
             .ToListAsync(ct);
-        return Results.Ok(songs);
+
+        return Results.Ok(Paging.Create(request, items.Select(s => WithLinks(s, request)).ToList(), page, pageSize, total));
     }
 
-    private static async Task<IResult> GetById(int albumId, int songId, GlazeAudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> GetById(int albumId, int songId, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         if (!await db.Albums.AnyAsync(a => a.Id == albumId, ct))
             return ApiProblems.NotFound("Album", albumId);
 
         var song = await Project(db.Songs.Where(s => s.AlbumId == albumId && s.Id == songId)).FirstOrDefaultAsync(ct);
-        return song is null ? ApiProblems.NotFound("Song", songId) : Results.Ok(song);
+        return song is null ? ApiProblems.NotFound("Song", songId) : Results.Ok(WithLinks(song, request));
     }
 
-    private static async Task<IResult> Create(int albumId, SongRequest request, GlazeAudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> Create(int albumId, SongRequest body, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         if (!await db.Albums.AnyAsync(a => a.Id == albumId, ct))
             return ApiProblems.NotFound("Album", albumId);
@@ -83,18 +103,18 @@ public static class SongEndpoints
         var song = new Song
         {
             AlbumId = albumId,
-            Title = request.Title!.Trim(),
-            TrackNumber = request.TrackNumber!.Value,
-            DurationSeconds = request.DurationSeconds!.Value
+            Title = body.Title!.Trim(),
+            TrackNumber = body.TrackNumber!.Value,
+            DurationSeconds = body.DurationSeconds!.Value
         };
         db.Songs.Add(song);
         await db.SaveChangesAsync(ct);
 
         var dto = new SongDto(song.Id, albumId, song.Title, song.TrackNumber, song.DurationSeconds, 0, null);
-        return Results.CreatedAtRoute("GetSong", new { albumId, songId = song.Id }, dto);
+        return Results.CreatedAtRoute("GetSong", new { albumId, songId = song.Id }, WithLinks(dto, request));
     }
 
-    private static async Task<IResult> Update(int albumId, int songId, SongRequest request, GlazeAudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> Update(int albumId, int songId, SongRequest body, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         if (!await db.Albums.AnyAsync(a => a.Id == albumId, ct))
             return ApiProblems.NotFound("Album", albumId);
@@ -102,12 +122,13 @@ public static class SongEndpoints
         var song = await db.Songs.FirstOrDefaultAsync(s => s.AlbumId == albumId && s.Id == songId, ct);
         if (song is null) return ApiProblems.NotFound("Song", songId);
 
-        song.Title = request.Title!.Trim();
-        song.TrackNumber = request.TrackNumber!.Value;
-        song.DurationSeconds = request.DurationSeconds!.Value;
+        song.Title = body.Title!.Trim();
+        song.TrackNumber = body.TrackNumber!.Value;
+        song.DurationSeconds = body.DurationSeconds!.Value;
         await db.SaveChangesAsync(ct);
 
-        return Results.Ok(await Project(db.Songs.Where(s => s.Id == songId)).FirstAsync(ct));
+        var dto = await Project(db.Songs.Where(s => s.Id == songId)).FirstAsync(ct);
+        return Results.Ok(WithLinks(dto, request));
     }
 
     private static async Task<IResult> Delete(int albumId, int songId, GlazeAudioDbContext db, CancellationToken ct)

@@ -1,6 +1,8 @@
 using GlazeAudio.Api.Data;
 using GlazeAudio.Api.Endpoints;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +21,9 @@ builder.Services.AddDbContext<GlazeAudioDbContext>(options => options
     .UseSeeding((context, _) => SeedData.Seed(context))
     .UseAsyncSeeding((context, _, ct) => SeedData.SeedAsync(context, ct)));
 
+// Salted PBKDF2 password hashing (from ASP.NET Core Identity, no extra package needed).
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+
 // ---------- Error handling: problem+json for 400 / 404 / 422 / 500 ----------
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
@@ -30,7 +35,7 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document,
     document.Info.Version = "v1";
     document.Info.Description =
         "REST API for GlazeAudio – a platform for reviewing music. " +
-        "Resources are hierarchical: albums → songs → reviews.";
+        "Resources are hierarchical: albums → songs → reviews. Reviews are written by users.";
     return Task.CompletedTask;
 }));
 
@@ -54,11 +59,22 @@ app.MapOpenApi();                                    // GET /openapi/v1.json
 app.MapGet("/docs", () => Results.Content(SwaggerUi.Html, "text/html")).ExcludeFromDescription();
 app.MapGet("/", () => Results.Redirect("/docs")).ExcludeFromDescription();
 
+// Hypermedia entry point: a client can start here and follow the links.
+app.MapGet("/api", (HttpRequest request) => Results.Ok(new ApiRoot("GlazeAudio API", "v1") { Links = ApiLinks.Root(request) }))
+    .WithName("GetApiRoot")
+    .WithTags("Root")
+    .WithSummary("API entry point with links to the main resources")
+    .Produces<ApiRoot>();
+
 app.MapAlbumEndpoints();
 app.MapSongEndpoints();
 app.MapReviewEndpoints();
+app.MapUserEndpoints();
 
 app.Run();
 
 // Exposed for integration tests (WebApplicationFactory<Program>).
 public partial class Program;
+
+/// <summary>Body of GET /api.</summary>
+public record ApiRoot(string Name, string Version) : Resource;

@@ -6,6 +6,8 @@ scripts:
     code: |-
       pm.test("Status 200 OK", () => pm.response.to.have.status(200));
       pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
-      pm.test("Returns seeded albums", () => { const b = pm.response.json(); pm.expect(b).to.be.an("array").that.is.not.empty; pm.expect(b[0]).to.have.keys("id","title","artist","releaseYear","genre","coverUrl","songCount","reviewCount","averageRating"); });
+      const b = pm.response.json();
+      pm.test("Returns a page of seeded albums", () => { pm.expect(b.items).to.be.an("array").that.is.not.empty; pm.expect(b).to.include.keys("page","pageSize","totalCount","totalPages","_links"); });
+      pm.test("Each album has fields and hypermedia links", () => { pm.expect(b.items[0]).to.include.keys("id","title","artist","releaseYear","genre","songCount","reviewCount","averageRating","_links"); pm.expect(b.items[0]._links).to.include.keys("self","update","delete","songs","overview"); });
     language: text/javascript
 order: 1000

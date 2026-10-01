@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GlazeAudio.Api.Infrastructure;
 
 namespace GlazeAudio.Api.Contracts;
 
@@ -12,7 +13,7 @@ public record AlbumDto(
     string? CoverUrl,
     int SongCount,
     int ReviewCount,
-    double? AverageRating);
+    double? AverageRating) : Resource;
 
 /// <summary>Body used to create or fully replace an album.</summary>
 public record AlbumRequest(

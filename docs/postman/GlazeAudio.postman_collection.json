@@ -1,11 +1,182 @@
 {
   "info": {
-    "_postman_id": "ecf14979-9518-4ef5-b157-bb7292fb0fab",
+    "_postman_id": "21e53172-0027-4157-b03e-5cd35c83616d",
     "name": "GlazeAudio API",
-    "description": "Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews) and the 400 / 404 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `newman run`). It creates its own album, song and review, then deletes them, so it can be re-run any number of times.",
+    "description": "Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews), user accounts linked to their reviews, pagination, filtering, hypermedia links, the album overview, and the 400 / 404 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `postman collection run`). It creates its own user, album, song and review, then deletes them, so it can be re-run any number of times.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "0. Users",
+      "item": [
+        {
+          "name": "POST register user",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Unique name per run, so the collection can be re-run without 409 conflicts",
+                  "pm.collectionVariables.set(\"testUsername\", \"tester_\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Location header points to new user\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/users/\" + b.id));",
+                  "pm.test(\"Password is never returned\", () => { pm.expect(b).to.not.have.property(\"password\"); pm.expect(b).to.not.have.property(\"passwordHash\"); });",
+                  "pm.test(\"New accounts get the User role\", () => pm.expect(b.role).to.eql(\"User\"));",
+                  "pm.collectionVariables.set(\"userId\", b.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testUsername}}@example.com\",\n  \"password\": \"Listening123!\",\n  \"bio\": \"Created by the Postman test run.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET all users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Returns a page of users\", () => { pm.expect(b.items).to.not.be.empty; pm.expect(b).to.include.keys(\"page\",\"pageSize\",\"totalCount\",\"totalPages\",\"_links\"); });",
+                  "pm.test(\"Each user links to their reviews\", () => pm.expect(b.items[0]._links.reviews.href).to.include(\"/reviews\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Correct user\", () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get(\"testUsername\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT update user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Bio updated\", () => pm.expect(pm.response.json().bio).to.eql(\"Mostly reviews Radiohead.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testUsername}}@example.com\",\n  \"bio\": \"Mostly reviews Radiohead.\",\n  \"role\": \"User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "1. Albums",
       "item": [
@@ -19,7 +190,9 @@
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Returns seeded albums\", () => { const b = pm.response.json(); pm.expect(b).to.be.an(\"array\").that.is.not.empty; pm.expect(b[0]).to.have.keys(\"id\",\"title\",\"artist\",\"releaseYear\",\"genre\",\"coverUrl\",\"songCount\",\"reviewCount\",\"averageRating\"); });"
+                  "const b = pm.response.json();",
+                  "pm.test(\"Returns a page of seeded albums\", () => { pm.expect(b.items).to.be.an(\"array\").that.is.not.empty; pm.expect(b).to.include.keys(\"page\",\"pageSize\",\"totalCount\",\"totalPages\",\"_links\"); });",
+                  "pm.test(\"Each album has fields and hypermedia links\", () => { pm.expect(b.items[0]).to.include.keys(\"id\",\"title\",\"artist\",\"releaseYear\",\"genre\",\"songCount\",\"reviewCount\",\"averageRating\",\"_links\"); pm.expect(b.items[0]._links).to.include.keys(\"self\",\"update\",\"delete\",\"songs\",\"overview\"); });"
                 ]
               }
             }
@@ -52,7 +225,9 @@
                   "const b = pm.response.json();",
                   "pm.test(\"Location header points to new album\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/albums/\" + b.id));",
                   "pm.test(\"Body echoes the album\", () => pm.expect(b.title).to.eql(\"In Rainbows\"));",
-                  "pm.collectionVariables.set(\"albumId\", b.id);"
+                  "pm.test(\"Response has hypermedia links\", () => pm.expect(b._links.songs.href).to.include(\"/api/albums/\" + b.id + \"/songs\"));",
+                  "pm.collectionVariables.set(\"albumId\", b.id);",
+                  "pm.collectionVariables.set(\"albumSongsUrl\", b._links.songs.href);"
                 ]
               }
             }
@@ -225,7 +400,7 @@
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Contains the new song\", () => pm.expect(pm.response.json().map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));"
+                  "pm.test(\"Contains the new song\", () => pm.expect(pm.response.json().items.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));"
                 ]
               }
             }
@@ -343,6 +518,7 @@
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
                   "pm.test(\"Overall rating is the average of 4 aspects\", () => pm.expect(b.overallRating).to.eql(4.5));",
+                  "pm.test(\"Linked to its author\", () => { pm.expect(b.userId).to.eql(Number(pm.collectionVariables.get(\"userId\"))); pm.expect(b.username).to.eql(pm.collectionVariables.get(\"testUsername\")); pm.expect(b._links.author.href).to.include(\"/api/users/\" + b.userId); });",
                   "pm.collectionVariables.set(\"reviewId\", b.id);"
                 ]
               }
@@ -372,7 +548,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -391,7 +567,7 @@
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Has one review\", () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                  "pm.test(\"Has one review\", () => { const b = pm.response.json(); pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.totalCount).to.eql(1); });"
                 ]
               }
             }
@@ -490,7 +666,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 5,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"Changed my mind: the lyrics hold up too. One of the best songs on the album.\"\n}",
+              "raw": "{\n  \"lyricsRating\": 5,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"Changed my mind: the lyrics hold up too. One of the best songs on the album.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -502,7 +678,441 @@
       ]
     },
     {
-      "name": "4. Error cases (400 / 404 / 422)",
+      "name": "4. Paging, filtering, hypermedia, overview",
+      "item": [
+        {
+          "name": "GET API root (hypermedia entry point)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Links to the albums collection\", () => pm.expect(pm.response.json()._links.albums.href).to.include(\"/api/albums\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api"
+              ]
+            },
+            "description": "A client can start here and discover the rest of the API by following _links."
+          }
+        },
+        {
+          "name": "Pagination - first page of 2 albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Page metadata\", () => { pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(2); pm.expect(b.items.length).to.be.at.most(2); pm.expect(b.totalPages).to.eql(Math.ceil(b.totalCount / 2)); });",
+                  "pm.test(\"Has next link, no prev link\", () => { pm.expect(b._links).to.have.property(\"next\"); pm.expect(b._links).to.not.have.property(\"prev\"); });",
+                  "pm.collectionVariables.set(\"nextPageUrl\", b._links.next.href);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums?page=1&pageSize=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagination - follow the next link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Now on page 2 with a prev link\", () => { pm.expect(b.page).to.eql(2); pm.expect(b._links).to.have.property(\"prev\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{nextPageUrl}}",
+              "host": [
+                "{{nextPageUrl}}"
+              ]
+            },
+            "description": "The URL comes from the previous response's _links.next - the client never builds it itself."
+          }
+        },
+        {
+          "name": "Filter - albums by genre and year",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Every album matches the filter\", () => { pm.expect(b.items).to.not.be.empty; b.items.forEach(a => { pm.expect(a.genre.toLowerCase()).to.include(\"rock\"); pm.expect(a.releaseYear).to.be.at.least(1990); }); });",
+                  "pm.test(\"Filters are kept in paging links\", () => pm.expect(b._links.self.href).to.include(\"genre=rock\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums?genre=rock&fromYear=1990",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ],
+              "query": [
+                {
+                  "key": "genre",
+                  "value": "rock"
+                },
+                {
+                  "key": "fromYear",
+                  "value": "1990"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter - search albums by text",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Finds the album created by this run\", () => pm.expect(pm.response.json().items.map(a => a.id)).to.include(Number(pm.collectionVariables.get(\"albumId\"))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums?search=rainbows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "rainbows"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hypermedia - follow the album's songs link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Lists the album songs\", () => pm.expect(b.items.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));",
+                  "pm.test(\"Each song links to its reviews\", () => pm.expect(b.items[0]._links.reviews.href).to.include(\"/reviews\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{albumSongsUrl}}",
+              "host": [
+                "{{albumSongsUrl}}"
+              ]
+            },
+            "description": "URL taken from _links.songs of the POST create album response."
+          }
+        },
+        {
+          "name": "Filter - songs by duration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"All songs are at least 300 s long\", () => pm.response.json().items.forEach(s => pm.expect(s.durationSeconds).to.be.at.least(300)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs?minDuration=300",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "minDuration",
+                  "value": "300"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter - reviews by author and minimum rating",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Only matching reviews\", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(r => { pm.expect(r.username).to.eql(pm.collectionVariables.get(\"testUsername\")); pm.expect(r.overallRating).to.be.at.least(4); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews?author={{testUsername}}&minRating=4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "author",
+                  "value": "{{testUsername}}"
+                },
+                {
+                  "key": "minRating",
+                  "value": "4"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter - users by role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Only admins\", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(u => pm.expect(u.role).to.eql(\"Admin\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?role=admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "admin"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "User's reviews (user + review + song + album)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Lists the review with its song and album\", () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].albumTitle).to.eql(\"In Rainbows\"); pm.expect(b.items[0].songTitle).to.eql(\"Weird Fishes / Arpeggi\"); });",
+                  "pm.test(\"Links back to the review\", () => pm.expect(b.items[0]._links.self.href).to.include(\"/reviews/\" + pm.collectionVariables.get(\"reviewId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}",
+                "reviews"
+              ]
+            },
+            "description": "A user's profile view of their reviews, built from User, Review, Song and Album."
+          }
+        },
+        {
+          "name": "Album overview (album + songs + reviews)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Built from 3 entities\", () => { pm.expect(b.album.id).to.eql(Number(pm.collectionVariables.get(\"albumId\"))); pm.expect(b.songs).to.have.lengthOf(1); pm.expect(b.latestReviews).to.have.lengthOf(1); });",
+                  "pm.test(\"Has rating statistics\", () => { pm.expect(b.stats.reviewCount).to.eql(1); pm.expect(b.stats.averageRating).to.eql(4.75); pm.expect(b.stats.aspectAverages).to.include.keys(\"lyrics\",\"melody\",\"mood\",\"expressiveness\"); });",
+                  "pm.test(\"Top-rated song is the reviewed song\", () => pm.expect(b.topRatedSong.id).to.eql(Number(pm.collectionVariables.get(\"songId\"))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "overview"
+              ]
+            },
+            "description": "Dashboard-style resource assembled from Album, Song and Review."
+          }
+        },
+        {
+          "name": "400 - invalid paging parameters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Both parameters reported\", () => pm.expect(pm.response.json().errors).to.have.keys(\"page\", \"pageSize\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums?page=0&pageSize=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "500"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Error cases (400 / 404 / 422)",
       "item": [
         {
           "name": "404 - album does not exist",
@@ -778,6 +1388,187 @@
           }
         },
         {
+          "name": "409 - username already taken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Explains the conflict\", () => pm.expect(pm.response.json().title).to.eql(\"Username already taken.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"mantas\",\n  \"email\": \"someone.else@example.com\",\n  \"password\": \"Listening123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "422 - invalid user fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Lists every invalid field\", () => pm.expect(pm.response.json().errors).to.have.keys(\"username\", \"email\", \"password\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"no spaces allowed\",\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "422 - review by a user that does not exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"userId reported\", () => pm.expect(pm.response.json().errors).to.have.property(\"userId\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 999999,\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "409 - same user reviews the song twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Explains the conflict\", () => pm.expect(pm.response.json().title).to.eql(\"Review already exists.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "422 - review rating out of 0-5 range",
           "event": [
             {
@@ -815,7 +1606,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"authorName\": \"mantas\",\n  \"lyricsRating\": 4,\n  \"melodyRating\": 9,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 9,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -827,7 +1618,7 @@
       ]
     },
     {
-      "name": "5. Delete (204)",
+      "name": "6. Delete (204)",
       "item": [
         {
           "name": "DELETE review",
@@ -980,6 +1771,64 @@
               ]
             }
           }
+        },
+        {
+          "name": "DELETE user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "404 - deleted user is gone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
         }
       ]
     }
@@ -999,6 +1848,22 @@
     },
     {
       "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "testUsername",
+      "value": ""
+    },
+    {
+      "key": "albumSongsUrl",
+      "value": ""
+    },
+    {
+      "key": "nextPageUrl",
       "value": ""
     }
   ]

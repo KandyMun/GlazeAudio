@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GlazeAudio.Api.Infrastructure;
 
 namespace GlazeAudio.Api.Contracts;
 
@@ -10,7 +11,7 @@ public record SongDto(
     int TrackNumber,
     int DurationSeconds,
     int ReviewCount,
-    double? AverageRating);
+    double? AverageRating) : Resource;
 
 /// <summary>Body used to create or fully replace a song.</summary>
 public record SongRequest(

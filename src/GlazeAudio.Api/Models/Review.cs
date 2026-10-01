@@ -9,8 +9,9 @@ public class Review
     public int SongId { get; set; }
     public Song Song { get; set; } = null!;
 
-    // Placeholder until authentication is added – will become a reference to the user account.
-    public required string AuthorName { get; set; }
+    /// <summary>The account that wrote the review. One review per user per song.</summary>
+    public int UserId { get; set; }
+    public User User { get; set; } = null!;
 
     public int LyricsRating { get; set; }
     public int MelodyRating { get; set; }

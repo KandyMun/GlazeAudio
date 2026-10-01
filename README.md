@@ -17,33 +17,118 @@ Resources are hierarchical: **Album → Song → Review**. Each resource has 5 m
 
 | # | Method | Route | Success | Errors |
 |---|--------|-------|---------|--------|
-| 1 | GET    | `/api/albums` | 200 | – |
+| 1 | GET    | `/api/albums` | 200 | 400 |
 | 2 | GET    | `/api/albums/{albumId}` | 200 | 404 |
 | 3 | POST   | `/api/albums` | 201 + `Location` | 400, 422 |
 | 4 | PUT    | `/api/albums/{albumId}` | 200 | 400, 404, 422 |
 | 5 | DELETE | `/api/albums/{albumId}` | 204 | 404 |
-| 6 | GET    | `/api/albums/{albumId}/songs` | 200 | 404 |
+| 6 | GET    | `/api/albums/{albumId}/songs` | 200 | 400, 404 |
 | 7 | GET    | `/api/albums/{albumId}/songs/{songId}` | 200 | 404 |
 | 8 | POST   | `/api/albums/{albumId}/songs` | 201 + `Location` | 400, 404, 422 |
 | 9 | PUT    | `/api/albums/{albumId}/songs/{songId}` | 200 | 400, 404, 422 |
 | 10 | DELETE | `/api/albums/{albumId}/songs/{songId}` | 204 | 404 |
-| 11 | GET    | `/api/albums/{albumId}/songs/{songId}/reviews` | 200 | 404 |
+| 11 | GET    | `/api/albums/{albumId}/songs/{songId}/reviews` | 200 | 400, 404 |
 | 12 | GET    | `/api/albums/{albumId}/songs/{songId}/reviews/{reviewId}` | 200 | 404 |
 | 13 | POST   | `/api/albums/{albumId}/songs/{songId}/reviews` | 201 + `Location` | 400, 404, 422 |
 | 14 | PUT    | `/api/albums/{albumId}/songs/{songId}/reviews/{reviewId}` | 200 | 400, 404, 422 |
 | 15 | DELETE | `/api/albums/{albumId}/songs/{songId}/reviews/{reviewId}` | 204 | 404 |
 
+Two more endpoints:
+
+| Method | Route | What it returns |
+|--------|-------|-----------------|
+| GET | `/api` | API entry point with links to the main resources |
+| GET | `/api/albums/{albumId}/overview` | Album overview built from the album, its songs and their reviews (see below) |
+
+## User accounts
+
+Users aren't a domain object (the requirements exclude the users table from the 3 objects). They own reviews, and later they'll decide what each person may do. **Login and JWT aren't added yet**, so these endpoints are open for now.
+
+| Method | Route | Success | Errors |
+|--------|-------|---------|--------|
+| GET    | `/api/users` (paged; filters `search`, `role`) | 200 | 400 |
+| GET    | `/api/users/{userId}` | 200 | 404 |
+| GET    | `/api/users/{userId}/reviews` (paged; filter `minRating`) | 200 | 400, 404 |
+| POST   | `/api/users` (register) | 201 + `Location` | 400, 409, 422 |
+| PUT    | `/api/users/{userId}` | 200 | 400, 404, 409, 422 |
+| DELETE | `/api/users/{userId}` | 204 | 404 |
+
+- **Fields:** `username` (unique; letters, digits, `_ . -`), `email` (unique), `role` (`User` or `Admin`), `bio`, `createdAt`, `reviewCount`. The password is stored as a salted PBKDF2 hash (ASP.NET Core Identity's `PasswordHasher`) and is never returned.
+- **Registration** always creates a `User`. An admin can change the role with `PUT`.
+- **409 Conflict** is returned when the username or email is already taken (case-insensitive), or when a user tries to review the same song twice.
+- **Reviews are linked to users.** Creating a review takes a `userId`, which will come from the login token once JWT is added, and a review's author can't be changed. Each review includes `userId`, `username` and an `author` link. A user can review a song only once. Deleting a user also deletes their reviews.
+- **`GET /api/users/{userId}/reviews`** is the user's profile view: each review together with its song and album.
+
+**Demo accounts** (seeded): `admin` (Admin), `mantas`, `vinyl_owl`, `bassline_ben`, `quietstorm` and `dj_lina` (User). They all have the password `GlazeAudio123!`, ready for when login is added.
+
+> **Upgrading an existing database:** the `AddUsers` migration keeps your data. It creates an account for every author name already in `Reviews`, links each review to it, and then removes the old `AuthorName` column. On the next start, seeding gives the demo accounts their passwords and adds `admin`. It runs in one transaction, so if anything fails, nothing changes.
+
 **How response codes are chosen**
 
 - **404 Not Found:** the resource doesn't exist, *or* the URL hierarchy is wrong (e.g. a song requested under an album it doesn't belong to).
-- **400 Bad Request:** the server can't read the body: malformed JSON, a wrong value type (`"trackNumber": "first"`) or a missing body.
+- **400 Bad Request:** the server can't read the request: malformed JSON, a wrong value type (`"trackNumber": "first"`), a missing body, or invalid query parameters (`?page=0`, `?pageSize=500`, `?page=abc`, `?minRating=9`).
 - **422 Unprocessable Entity:** the JSON is valid but breaks a rule: empty title, year outside 1900–2100, a rating outside 0–5, and so on. The response lists every invalid field under `errors`.
 - **201 Created:** returns the created object plus a `Location` header.
 - **204 No Content:** returned after a delete; the body is empty.
 
 All errors use the `application/problem+json` format (RFC 9457). Successful responses are `application/json`.
 
-**Reviews** rate four aspects from 0 to 5: `lyricsRating`, `melodyRating`, `moodRating` and `expressivenessRating`. They also include a `comment`. `overallRating` is the average of the four. Songs and albums show `reviewCount` and `averageRating`, so an album's rating is built from the reviews of its songs.
+**Reviews** are written by a user and rate four aspects from 0 to 5: `lyricsRating`, `melodyRating`, `moodRating` and `expressivenessRating`. They also include a `comment`. `overallRating` is the average of the four. Songs and albums show `reviewCount` and `averageRating`, so an album's rating is built from the reviews of its songs.
+
+## Pagination, filtering and hypermedia
+
+### Pagination
+
+All three list endpoints are paged with `page` (default 1) and `pageSize` (default 10, max 50). The response wraps the items:
+
+```
+GET /api/albums?page=1&pageSize=2
+```
+```json
+{
+  "items": [ { "id": 1, "title": "OK Computer", ... }, { "id": 2, ... } ],
+  "page": 1, "pageSize": 2, "totalCount": 5, "totalPages": 3,
+  "_links": {
+    "self":  { "href": "http://localhost:5080/api/albums?page=1&pageSize=2", "method": "GET" },
+    "first": { "href": "...?page=1&pageSize=2", "method": "GET" },
+    "last":  { "href": "...?page=3&pageSize=2", "method": "GET" },
+    "next":  { "href": "...?page=2&pageSize=2", "method": "GET" }
+  }
+}
+```
+
+### Filtering
+
+Filters are query parameters on the list endpoints. They can be combined with each other and with paging, and the paging links keep them.
+
+| Endpoint | Filters |
+|---|---|
+| `GET /api/albums` | `search` (title or artist), `artist`, `genre`, `fromYear`, `toYear` |
+| `GET /api/albums/{albumId}/songs` | `search` (title), `minDuration`, `maxDuration` (seconds) |
+| `GET /api/albums/{albumId}/songs/{songId}/reviews` | `author`, `minRating`, `maxRating` (overall rating, 0–5) |
+
+Text filters are case-insensitive, e.g. `GET /api/albums?genre=rock&fromYear=1990` or `GET .../reviews?author=mantas&minRating=4`.
+
+### Hypermedia
+
+Every album, song and review, every page, and the API root include a `_links` object. It tells the client what it can do next and which HTTP method to use, so a client can start at `GET /api` and navigate by following links instead of building URLs:
+
+| Resource | Links |
+|---|---|
+| Album | `self`, `update` (PUT), `delete` (DELETE), `songs`, `createSong` (POST), `overview`, `albums` |
+| Song | `self`, `update`, `delete`, `reviews`, `createReview`, `album` |
+| Review | `self`, `update`, `delete`, `song`, `album` |
+| Page | `self`, `first`, `last`, and `prev` / `next` when they exist |
+
+### Album overview (resource built from several entities)
+
+`GET /api/albums/{albumId}/overview` is a dashboard-style resource assembled from **three entities**: Album, Song and Review.
+
+- `album`: the album's details
+- `stats`: song count, review count, total duration, average rating, and the average of each aspect (lyrics, melody, mood, expressiveness) across all reviews
+- `songs`: every song with its review count and average rating
+- `topRatedSong`: the highest-rated song
+- `latestReviews`: the 5 newest reviews on the album, with the song title of each
 
 ## OpenAPI specification
 
@@ -104,14 +189,14 @@ The collection uses the **Postman v3 (YAML) format** that Postman 12 works with:
 
 ```
 postman/
-├── collections/GlazeAudio API/     one .request.yaml per request, grouped into 5 folders
+├── collections/GlazeAudio API/     one .request.yaml per request, grouped into 7 folders
 └── environments/                   GlazeAudio - Local / GlazeAudio - Azure
 ```
 
 **In the Postman app (import)**
 1. Click **Import** and select the two files in `docs/postman/`: `GlazeAudio.postman_collection.json` and `Local.postman_environment.json`. If Postman asks how to import them, choose **Postman Collection**, not OpenAPI.
 2. Select the **GlazeAudio - Local** environment.
-3. On the **GlazeAudio API** collection (5 numbered folders), choose **⋯ → Run collection → Run**.
+3. On the **GlazeAudio API** collection (7 numbered folders, 0–6), choose **⋯ → Run collection → Run**.
 
 Don't import `docs/openapi.json` as a collection. Postman would generate requests with placeholder IDs and no tests.
 
@@ -123,17 +208,19 @@ Don't import `docs/openapi.json` as a collection. Postman would generate request
 postman collection run "postman/collections/GlazeAudio API" -e "postman/environments/GlazeAudio - Local.environment.yaml"
 ```
 
-The collection runs 25 requests with 56 assertions in about a second:
+The collection runs 47 requests with 119 assertions in a couple of seconds:
 
 | Folder | What it shows |
 |---|---|
+| 0. Users | POST register (201 + Location; a unique username per run), GET list, GET one, PUT |
 | 1. Albums | GET list, POST (201 + Location), GET one, PUT |
 | 2. Songs | POST (201), GET list, GET one, PUT |
 | 3. Reviews | POST (201), GET list, GET one, PUT |
-| 4. Error cases | 404 missing album/review, 404 song under the wrong album, 400 malformed JSON, 400 wrong type, 422 invalid fields, 422 rating out of range |
-| 5. Delete | DELETE review / song / album (204), then 404 for the deleted album |
+| 4. Paging, filtering, hypermedia, overview | API root, page 1 of 2 → follow the `next` link, filters on albums / songs / reviews / users, follow an album's `songs` link, album overview, a user's reviews, 400 for invalid paging |
+| 5. Error cases | 404 missing album/review, 404 song under the wrong album, 400 malformed JSON, 400 wrong type, 422 invalid fields, 409 username taken, 422 invalid user, 422 review by a missing user, 409 duplicate review, 422 rating out of range |
+| 6. Delete | DELETE review / song / album / user (204), then 404 for the deleted album and user |
 
-The collection creates its own album, song and review and deletes them at the end, so you can run it as many times as you like.
+The collection creates its own user, album, song and review and deletes them at the end, so you can run it as many times as you like.
 
 ## Setup on Windows
 
@@ -195,9 +282,10 @@ postman collection run "postman\collections\GlazeAudio API" -e "postman\environm
 ```
 src/GlazeAudio.Api/
 ├── Program.cs                 DI, EF Core, OpenAPI, error handling, endpoint mapping
-├── Models/                    Album, Song, Review (EF Core entities)
-├── Data/                      GlazeAudioDbContext, SeedData
-├── Contracts/                 Request/response records + validation rules
-├── Endpoints/                 AlbumEndpoints, SongEndpoints, ReviewEndpoints
-└── Infrastructure/            422 validation filter, 400 handler, Swagger UI page
+├── Models/                    Album, Song, Review, User (EF Core entities)
+├── Data/                      GlazeAudioDbContext, SeedData (demo users + albums)
+├── Migrations/                InitialCreate, AddUsers
+├── Contracts/                 Request/response records, query parameters, overview + validation rules
+├── Endpoints/                 AlbumEndpoints, SongEndpoints, ReviewEndpoints, UserEndpoints
+└── Infrastructure/            hypermedia links, paging, 422 validation filter, 400 handler, Swagger UI page
 ```

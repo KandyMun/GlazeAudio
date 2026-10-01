@@ -16,7 +16,9 @@ public class BadRequestExceptionHandler(IProblemDetailsService problemDetails) :
 
         var detail = badRequest.InnerException is JsonException json
             ? $"The JSON payload is invalid: {json.Message}"
-            : "The request body is missing or could not be read. Send a JSON body with Content-Type: application/json.";
+            : badRequest.Message.StartsWith("Failed to bind parameter", StringComparison.Ordinal)
+                ? badRequest.Message   // e.g. a query value of the wrong type: ?page=abc
+                : "The request body is missing or could not be read. Send a JSON body with Content-Type: application/json.";
 
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         return await problemDetails.TryWriteAsync(new ProblemDetailsContext
