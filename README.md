@@ -7,8 +7,8 @@ This repository currently contains the **GlazeAudio REST API**: ASP.NET Core 10 
 GlazeAudio/
 ├── src/GlazeAudio.Api/     ASP.NET Core API (endpoints, EF Core model, seed data)
 ├── infra/                  azure-sql-setup.sh – creates the Azure SQL database
-├── postman/                Postman collection + environments (demo & tests)
-└── docs/openapi.json       Exported OpenAPI specification
+├── postman/                Postman v3 collection + environments (demo & tests)
+└── docs/                   openapi.json (exported spec), postman/ (JSON collection for Import)
 ```
 
 ## Resources and API methods
@@ -57,7 +57,7 @@ All errors use the `application/problem+json` format (RFC 9457). Successful resp
 - [.NET 10 SDK](https://dotnet.microsoft.com/download). On Arch: `sudo pacman -S dotnet-sdk aspnet-runtime`
 - EF Core CLI: `dotnet tool install --global dotnet-ef`
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). On Arch: `yay -S azure-cli`
-- Postman (or `npm i -g newman` to run the tests from the terminal)
+- Postman 12 (`yay -S postman-bin`), or the Postman CLI (`npm i -g postman-cli`) to run the tests from the terminal
 
 ### 1. Connect to the Azure SQL database
 
@@ -97,9 +97,28 @@ The API listens on **http://localhost:5080**. On startup it also applies any pen
 
 ### 3. Run the Postman demo
 
-1. In Postman, go to **Import** and select everything in the `postman/` folder.
+The collection uses the **Postman v3 (YAML) format** that Postman 12 works with: one file per request, in this layout:
+
+```
+postman/
+├── collections/GlazeAudio API/     one .request.yaml per request, grouped into 5 folders
+└── environments/                   GlazeAudio - Local / GlazeAudio - Azure
+```
+
+**In the Postman app (import)**
+1. Click **Import** and select the two files in `docs/postman/`: `GlazeAudio.postman_collection.json` and `Local.postman_environment.json`. If Postman asks how to import them, choose **Postman Collection**, not OpenAPI.
 2. Select the **GlazeAudio - Local** environment.
-3. Open the collection → **Run** → **Run GlazeAudio API**.
+3. On the **GlazeAudio API** collection (5 numbered folders), choose **⋯ → Run collection → Run**.
+
+Don't import `docs/openapi.json` as a collection. Postman would generate requests with placeholder IDs and no tests.
+
+**In the Postman app (open folder):** Files icon → **Open folder** → select the repo root → **Local View**. Postman 12 then reads `postman/collections` and `postman/environments` directly.
+
+**From the terminal** (Postman CLI: `npm i -g postman-cli`):
+
+```bash
+postman collection run "postman/collections/GlazeAudio API" -e "postman/environments/GlazeAudio - Local.environment.yaml"
+```
 
 The collection runs 25 requests with 56 assertions in about a second:
 
@@ -112,12 +131,6 @@ The collection runs 25 requests with 56 assertions in about a second:
 | 5. Delete | DELETE review / song / album (204), then 404 for the deleted album |
 
 The collection creates its own album, song and review and deletes them at the end, so you can run it as many times as you like.
-
-From the terminal:
-
-```bash
-newman run postman/GlazeAudio.postman_collection.json -e postman/Local.postman_environment.json
-```
 
 ## Project structure (API)
 

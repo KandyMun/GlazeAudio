@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "",
+      "artist": "Nobody",
+      "releaseYear": 1500,
+      "genre": "Pop"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 422 Unprocessable Entity", () => pm.response.to.have.status(422));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      pm.test("Lists every invalid field", () => pm.expect(pm.response.json().errors).to.have.keys("title", "releaseYear"));
+    language: text/javascript
+order: 7000

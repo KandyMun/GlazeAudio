@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 200 OK", () => pm.response.to.have.status(200));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+    language: text/javascript
+order: 3000

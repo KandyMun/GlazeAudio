@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews/{{reviewId}}"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 204 No Content", () => pm.response.to.have.status(204));
+      pm.test("No body", () => pm.expect(pm.response.text()).to.be.empty);
+    language: text/javascript
+order: 1000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{ "title": "Broken", "artist": '
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 400 Bad Request", () => pm.response.to.have.status(400));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+    language: text/javascript
+order: 5000

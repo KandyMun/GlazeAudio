@@ -1,0 +1,6 @@
+name: GlazeAudio - Azure
+values:
+  - key: baseUrl
+    value: 'https://<your-app-name>.azurewebsites.net'
+    enabled: true
+    type: default

@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "bdaab1a9-6476-4a0e-b8f8-7146a43460ca",
+    "_postman_id": "ecf14979-9518-4ef5-b157-bb7292fb0fab",
     "name": "GlazeAudio API",
     "description": "Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews) and the 400 / 404 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `newman run`). It creates its own album, song and review, then deletes them, so it can be re-run any number of times.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"

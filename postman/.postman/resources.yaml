@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: 9dd667d7-282f-469e-881a-aea917adc1b5
+
+localResources:
+  environments:
+    - ../environments/GlazeAudio - Azure.environment.yaml
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/GlazeAudio API: 3916787c-4699-44a5-9994-5823efab3fe7

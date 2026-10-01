@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/albums/{{albumId}}/songs"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Weird Fishes/Arpeggi",
+      "trackNumber": 4,
+      "durationSeconds": 318
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 201 Created", () => pm.response.to.have.status(201));
+      pm.test("Content-Type is JSON", () => pm.expect(pm.response.headers.get("Content-Type")).to.match(/application\/(problem\+)?json/));
+      const b = pm.response.json();
+      pm.test("Location header set", () => pm.expect(pm.response.headers.get("Location")).to.include("/songs/" + b.id));
+      pm.collectionVariables.set("songId", b.id);
+    language: text/javascript
+order: 1000

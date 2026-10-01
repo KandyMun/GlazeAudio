@@ -1,0 +1,11 @@
+$kind: http-request
+description: The song exists, but belongs to a different album, so the nested URL is invalid.
+url: "{{baseUrl}}/api/albums/1/songs/{{songId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status 404 Not Found", () => pm.response.to.have.status(404));
+      pm.test("Hierarchy is enforced", () => pm.expect(pm.response.json().title).to.eql("Song not found."));
+    language: text/javascript
+order: 2000
