@@ -1,6 +1,5 @@
 namespace GlazeAudio.Api.Models;
 
-/// <summary>A platform account. Not a domain object – it owns reviews and decides what a person may do.</summary>
 public class User
 {
     public int Id { get; set; }
@@ -10,7 +9,7 @@ public class User
     /// <summary>ASP.NET Core Identity password hash (PBKDF2). Never returned by the API.</summary>
     public string PasswordHash { get; set; } = "";
 
-    /// <summary>"User" or "Admin" – see <see cref="UserRoles"/>. Will be put into the JWT as a role claim.</summary>
+    /// <summary>"User" or "Admin".</summary>
     public string Role { get; set; } = UserRoles.User;
 
     public string? Bio { get; set; }

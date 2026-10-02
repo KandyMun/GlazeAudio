@@ -42,8 +42,6 @@ Two more endpoints:
 
 ## User accounts
 
-Users aren't a domain object (the requirements exclude the users table from the 3 objects). They own reviews, and later they'll decide what each person may do. **Login and JWT aren't added yet**, so these endpoints are open for now.
-
 | Method | Route | Success | Errors |
 |--------|-------|---------|--------|
 | GET    | `/api/users` (paged; filters `search`, `role`) | 200 | 400 |
@@ -61,12 +59,11 @@ Users aren't a domain object (the requirements exclude the users table from the 
 
 **Demo accounts** (seeded): `admin` (Admin), `mantas`, `vinyl_owl`, `bassline_ben`, `quietstorm` and `dj_lina` (User). They all have the password `GlazeAudio123!`, ready for when login is added.
 
-> **Upgrading an existing database:** the `AddUsers` migration keeps your data. It creates an account for every author name already in `Reviews`, links each review to it, and then removes the old `AuthorName` column. On the next start, seeding gives the demo accounts their passwords and adds `admin`. It runs in one transaction, so if anything fails, nothing changes.
-
-**How response codes are chosen**
+**Response codes**
 
 - **404 Not Found:** the resource doesn't exist, *or* the URL hierarchy is wrong (e.g. a song requested under an album it doesn't belong to).
 - **400 Bad Request:** the server can't read the request: malformed JSON, a wrong value type (`"trackNumber": "first"`), a missing body, or invalid query parameters (`?page=0`, `?pageSize=500`, `?page=abc`, `?minRating=9`).
+- **409 Conflict** the server refuses to handle the request because of a conflict with the current state of the target resource. Happens when trying to concurrently work the same resource.
 - **422 Unprocessable Entity:** the JSON is valid but breaks a rule: empty title, year outside 1900–2100, a rating outside 0–5, and so on. The response lists every invalid field under `errors`.
 - **201 Created:** returns the created object plus a `Location` header.
 - **204 No Content:** returned after a delete; the body is empty.

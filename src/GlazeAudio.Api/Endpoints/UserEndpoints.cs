@@ -8,8 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GlazeAudio.Api.Endpoints;
 
 /// <summary>
-/// User accounts. Authentication (login, JWT) is not added yet, so these endpoints are open for now;
-/// later, listing/deleting users will be admin-only and editing will be limited to your own account.
+/// User accounts.
 /// </summary>
 public static class UserEndpoints
 {
