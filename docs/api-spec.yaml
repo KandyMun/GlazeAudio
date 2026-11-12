@@ -1,0 +1,3933 @@
+# GlazeAudio API specification (OpenAPI 3.0).
+# Generated from the running API (/openapi/v1.json); the examples are real requests and responses
+# recorded against the demo data. View it at https://editor.swagger.io or import it into Postman.
+openapi: 3.0.1
+info:
+  title: GlazeAudio API
+  description: |-
+    REST API for GlazeAudio, a platform for reviewing music. Resources are hierarchical: albums → songs → reviews; reviews are written by users.
+
+    Authentication: log in with POST /api/auth/login and send the access token as `Authorization: Bearer <token>`. The token is a JWT (HS256) valid for 15 minutes and contains the user's id (`sub`), name and role (`role`: User or Admin). Use POST /api/auth/refresh with the refresh token to get a new one.
+
+    Errors are returned as RFC 9457 problem details (`application/problem+json`).
+  version: v1
+servers:
+- url: http://localhost:5080
+  description: Local (dotnet run)
+- url: https://{appName}.azurewebsites.net
+  description: Azure App Service
+  variables:
+    appName:
+      default: glazeaudio-api
+      description: Name of the App Service (see infra/.deploy.env)
+paths:
+  /api:
+    get:
+      tags:
+      - Root
+      summary: API entry point with links to the main resources
+      operationId: GetApiRoot
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiRoot'
+              examples:
+                API_root:
+                  summary: API root
+                  value:
+                    name: GlazeAudio API
+                    version: v1
+                    _links:
+                      self:
+                        href: http://localhost:5080/api
+                        method: GET
+                      albums:
+                        href: http://localhost:5080/api/albums
+                        method: GET
+                      createAlbum:
+                        href: http://localhost:5080/api/albums
+                        method: POST
+                      register:
+                        href: http://localhost:5080/api/auth/register
+                        method: POST
+                      login:
+                        href: http://localhost:5080/api/auth/login
+                        method: POST
+                      refresh:
+                        href: http://localhost:5080/api/auth/refresh
+                        method: POST
+                      me:
+                        href: http://localhost:5080/api/auth/me
+                        method: GET
+                      docs:
+                        href: http://localhost:5080/openapi/v1.json
+                        method: GET
+  /api/albums:
+    get:
+      tags:
+      - Albums
+      summary: List albums (paged, filterable)
+      description: Returns one page of albums with their song count, review count and average rating. Filter with search,
+        artist, genre, fromYear and toYear. Paging metadata and first/prev/next/last links are included in the response.
+      operationId: GetAlbums
+      parameters:
+      - name: page
+        in: query
+        description: Page number, starting at 1. Default 1.
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        description: Items per page, 1–50. Default 10.
+        schema:
+          type: integer
+          format: int32
+      - name: search
+        in: query
+        description: Text to find in the album title or artist (case-insensitive).
+        schema:
+          type: string
+      - name: artist
+        in: query
+        description: Only albums whose artist contains this text.
+        schema:
+          type: string
+      - name: genre
+        in: query
+        description: Only albums whose genre contains this text, e.g. 'rock'.
+        schema:
+          type: string
+      - name: fromYear
+        in: query
+        description: Only albums released in or after this year.
+        schema:
+          type: integer
+          format: int32
+      - name: toYear
+        in: query
+        description: Only albums released in or before this year.
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultOfAlbumDto'
+              examples:
+                Paged_filtered_list:
+                  summary: Paged, filtered list
+                  value:
+                    items:
+                    - id: 2
+                      title: Random Access Memories
+                      artist: Daft Punk
+                      releaseYear: 2013
+                      genre: Electronic / Disco
+                      coverUrl: /covers/ink-speckle.jpg
+                      songCount: 4
+                      reviewCount: 5
+                      averageRating: 3.95
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/2
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/2
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/2
+                          method: DELETE
+                        songs:
+                          href: http://localhost:5080/api/albums/2/songs
+                          method: GET
+                        createSong:
+                          href: http://localhost:5080/api/albums/2/songs
+                          method: POST
+                        overview:
+                          href: http://localhost:5080/api/albums/2/overview
+                          method: GET
+                        albums:
+                          href: http://localhost:5080/api/albums
+                          method: GET
+                    - id: 3
+                      title: To Pimp a Butterfly
+                      artist: Kendrick Lamar
+                      releaseYear: 2015
+                      genre: Hip-Hop / Jazz Rap
+                      coverUrl: /covers/ochre-crackle.jpg
+                      songCount: 4
+                      reviewCount: 5
+                      averageRating: 4.45
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/3
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/3
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/3
+                          method: DELETE
+                        songs:
+                          href: http://localhost:5080/api/albums/3/songs
+                          method: GET
+                        createSong:
+                          href: http://localhost:5080/api/albums/3/songs
+                          method: POST
+                        overview:
+                          href: http://localhost:5080/api/albums/3/overview
+                          method: GET
+                        albums:
+                          href: http://localhost:5080/api/albums
+                          method: GET
+                    page: 1
+                    pageSize: 2
+                    totalCount: 3
+                    totalPages: 2
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums?fromYear=2010&page=1&pageSize=2
+                        method: GET
+                      first:
+                        href: http://localhost:5080/api/albums?fromYear=2010&page=1&pageSize=2
+                        method: GET
+                      last:
+                        href: http://localhost:5080/api/albums?fromYear=2010&page=2&pageSize=2
+                        method: GET
+                      next:
+                        href: http://localhost:5080/api/albums?fromYear=2010&page=2&pageSize=2
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Invalid_paging:
+                  summary: Invalid paging
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.1
+                    title: Invalid query parameters.
+                    status: 400
+                    errors:
+                      pageSize:
+                      - pageSize must be between 1 and 50.
+    post:
+      tags:
+      - Albums
+      summary: Create an album (admin)
+      description: Creates a new album. Returns 201 with a Location header that points to the new album.
+      operationId: CreateAlbum
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+            examples:
+              Create_admin:
+                summary: Create (admin)
+                value:
+                  title: In Rainbows
+                  artist: Radiohead
+                  releaseYear: 2007
+                  genre: Alternative Rock
+                  coverUrl: /covers/teal-bloom.jpg
+              Not_logged_in:
+                summary: Not logged in
+                value:
+                  title: In Rainbows
+                  artist: Radiohead
+                  releaseYear: 2007
+                  genre: Alternative Rock
+                  coverUrl: /covers/teal-bloom.jpg
+              Not_an_admin:
+                summary: Not an admin
+                value:
+                  title: In Rainbows
+                  artist: Radiohead
+                  releaseYear: 2007
+                  genre: Alternative Rock
+                  coverUrl: /covers/teal-bloom.jpg
+              Validation_error:
+                summary: Validation error
+                value:
+                  title: ''
+                  artist: Radiohead
+                  releaseYear: 1800
+                  genre: Rock
+                  coverUrl: not a link
+        required: true
+      responses:
+        '201':
+          description: Created. The new resource is returned and the Location header points to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDto'
+              examples:
+                Create_admin:
+                  summary: Create (admin)
+                  value:
+                    id: 6
+                    title: In Rainbows
+                    artist: Radiohead
+                    releaseYear: 2007
+                    genre: Alternative Rock
+                    coverUrl: /covers/teal-bloom.jpg
+                    songCount: 0
+                    reviewCount: 0
+                    averageRating: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6
+                        method: DELETE
+                      songs:
+                        href: http://localhost:5080/api/albums/6/songs
+                        method: GET
+                      createSong:
+                        href: http://localhost:5080/api/albums/6/songs
+                        method: POST
+                      overview:
+                        href: http://localhost:5080/api/albums/6/overview
+                        method: GET
+                      albums:
+                        href: http://localhost:5080/api/albums
+                        method: GET
+          headers:
+            Location:
+              description: URL of the created resource.
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: &id001
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.1
+                    title: The request could not be read.
+                    status: 400
+                    detail: 'The JSON payload is invalid: ''b'' is an invalid start of a property name. Expected a ''"''.
+                      Path: $ | LineNumber: 0 | BytePositionInLine: 1.'
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_logged_in:
+                  summary: Not logged in
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                    title: Authentication required.
+                    status: 401
+                    detail: 'Log in and send the access token as ''Authorization: Bearer <token>''.'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_an_admin:
+                  summary: Not an admin
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: Your role does not allow this action.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Validation_error:
+                  summary: Validation error
+                  value:
+                    type: https://tools.ietf.org/html/rfc4918#section-11.2
+                    title: One or more validation errors occurred.
+                    status: 422
+                    errors:
+                      title:
+                      - The Title field is required.
+                      releaseYear:
+                      - The field ReleaseYear must be between 1900 and 2100.
+                      coverUrl:
+                      - Cover URL must be an http(s) address or a path starting with '/'.
+      security:
+      - Bearer: []
+  /api/albums/{albumId}:
+    get:
+      tags:
+      - Albums
+      summary: Get one album
+      operationId: GetAlbum
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDto'
+              examples:
+                One_album:
+                  summary: One album
+                  value:
+                    id: 1
+                    title: OK Computer
+                    artist: Radiohead
+                    releaseYear: 1997
+                    genre: Alternative Rock
+                    coverUrl: /covers/cobalt-drip.jpg
+                    songCount: 4
+                    reviewCount: 8
+                    averageRating: 4.3125
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/1
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/1
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/1
+                        method: DELETE
+                      songs:
+                        href: http://localhost:5080/api/albums/1/songs
+                        method: GET
+                      createSong:
+                        href: http://localhost:5080/api/albums/1/songs
+                        method: POST
+                      overview:
+                        href: http://localhost:5080/api/albums/1/overview
+                        method: GET
+                      albums:
+                        href: http://localhost:5080/api/albums
+                        method: GET
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_found:
+                  summary: Not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Album not found.
+                    status: 404
+                    detail: Album with id 999 does not exist.
+    put:
+      tags:
+      - Albums
+      summary: Update an album (admin)
+      description: Replaces all editable fields of the album.
+      operationId: UpdateAlbum
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+            examples:
+              Replace_admin:
+                summary: Replace (admin)
+                value:
+                  title: In Rainbows
+                  artist: Radiohead
+                  releaseYear: 2007
+                  genre: Art Rock
+                  coverUrl: /covers/teal-bloom.jpg
+              Not_found:
+                summary: Not found
+                value:
+                  title: In Rainbows
+                  artist: Radiohead
+                  releaseYear: 2007
+                  genre: Alternative Rock
+                  coverUrl: /covers/teal-bloom.jpg
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDto'
+              examples:
+                Replace_admin:
+                  summary: Replace (admin)
+                  value:
+                    id: 6
+                    title: In Rainbows
+                    artist: Radiohead
+                    releaseYear: 2007
+                    genre: Art Rock
+                    coverUrl: /covers/teal-bloom.jpg
+                    songCount: 0
+                    reviewCount: 0
+                    averageRating: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6
+                        method: DELETE
+                      songs:
+                        href: http://localhost:5080/api/albums/6/songs
+                        method: GET
+                      createSong:
+                        href: http://localhost:5080/api/albums/6/songs
+                        method: POST
+                      overview:
+                        href: http://localhost:5080/api/albums/6/overview
+                        method: GET
+                      albums:
+                        href: http://localhost:5080/api/albums
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_found:
+                  summary: Not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Album not found.
+                    status: 404
+                    detail: Album with id 999 does not exist.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+      security:
+      - Bearer: []
+    delete:
+      tags:
+      - Albums
+      summary: Delete an album (admin)
+      description: Deletes the album together with all of its songs and their reviews. Returns 204 with no body.
+      operationId: DeleteAlbum
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_an_admin:
+                  summary: Not an admin
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: Your role does not allow this action.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+      - Bearer: []
+  /api/albums/{albumId}/overview:
+    get:
+      tags:
+      - Albums
+      summary: Album overview (album + songs + reviews)
+      description: 'A dashboard-style resource built from three entities: the album, its songs with their ratings, rating
+        statistics per aspect across all reviews, the top-rated song and the latest reviews.'
+      operationId: GetAlbumOverview
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumOverviewDto'
+              examples:
+                Album_overview:
+                  summary: Album overview
+                  value:
+                    album:
+                      id: 5
+                      title: Currents
+                      artist: Tame Impala
+                      releaseYear: 2015
+                      genre: Psychedelic Pop
+                      coverUrl: /covers/plum-flow.jpg
+                    stats:
+                      songCount: 3
+                      reviewCount: 3
+                      totalDurationSeconds: 1001
+                      averageRating: 4
+                      aspectAverages:
+                        lyrics: 3.33
+                        melody: 4.67
+                        mood: 4.33
+                        expressiveness: 3.67
+                    songs:
+                    - id: 17
+                      trackNumber: 1
+                      title: Let It Happen
+                      durationSeconds: 467
+                      reviewCount: 1
+                      averageRating: 4.5
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                    - id: 18
+                      trackNumber: 2
+                      title: Eventually
+                      durationSeconds: 318
+                      reviewCount: 0
+                      averageRating: null
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/18
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/18
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/18
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/5/songs/18/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/5/songs/18/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                    - id: 19
+                      trackNumber: 3
+                      title: The Less I Know the Better
+                      durationSeconds: 216
+                      reviewCount: 2
+                      averageRating: 3.75
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                    topRatedSong:
+                      id: 17
+                      trackNumber: 1
+                      title: Let It Happen
+                      durationSeconds: 467
+                      reviewCount: 1
+                      averageRating: 4.5
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                    latestReviews:
+                    - id: 25
+                      songId: 19
+                      songTitle: The Less I Know the Better
+                      userId: 3
+                      username: vinyl_owl
+                      overallRating: 3.5
+                      comment: Catchy, but overplayed. Other tracks on the album deserve more attention.
+                      createdAt: '2026-11-12T21:17:14.610153Z'
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/25
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/25
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/25
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/3
+                          method: GET
+                    - id: 24
+                      songId: 19
+                      songTitle: The Less I Know the Better
+                      userId: 2
+                      username: mantas
+                      overallRating: 4
+                      comment: That bassline carries everything. The story is silly, which fits the song.
+                      createdAt: '2026-11-12T21:17:14.610153Z'
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/2
+                          method: GET
+                    - id: 23
+                      songId: 17
+                      songTitle: Let It Happen
+                      userId: 6
+                      username: dj_lina
+                      overallRating: 4.5
+                      comment: The fake skipping record part in the middle got me the first time. Great build-up.
+                      createdAt: '2026-11-12T21:17:14.610153Z'
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews/23
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews/23
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/17/reviews/23
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/5/songs/17
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/6
+                          method: GET
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/5/overview
+                        method: GET
+                      album:
+                        href: http://localhost:5080/api/albums/5
+                        method: GET
+                      songs:
+                        href: http://localhost:5080/api/albums/5/songs
+                        method: GET
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/albums/{albumId}/songs:
+    get:
+      tags:
+      - Songs
+      summary: List songs of an album (paged, filterable)
+      description: Returns one page of the album's songs ordered by track number. Filter with search, minDuration and maxDuration.
+        404 if the album does not exist.
+      operationId: GetSongs
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: page
+        in: query
+        description: Page number, starting at 1. Default 1.
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        description: Items per page, 1–50. Default 10.
+        schema:
+          type: integer
+          format: int32
+      - name: search
+        in: query
+        description: Text to find in the song title (case-insensitive).
+        schema:
+          type: string
+      - name: minDuration
+        in: query
+        description: Only songs at least this long (seconds).
+        schema:
+          type: integer
+          format: int32
+      - name: maxDuration
+        in: query
+        description: Only songs at most this long (seconds).
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultOfSongDto'
+              examples:
+                Songs_of_an_album:
+                  summary: Songs of an album
+                  value:
+                    items:
+                    - id: 1
+                      albumId: 1
+                      title: Airbag
+                      trackNumber: 1
+                      durationSeconds: 284
+                      reviewCount: 2
+                      averageRating: 3.875
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/1/songs/1
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/1/songs/1
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/1/songs/1
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/1/songs/1/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/1/songs/1/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/1
+                          method: GET
+                    - id: 2
+                      albumId: 1
+                      title: Paranoid Android
+                      trackNumber: 2
+                      durationSeconds: 383
+                      reviewCount: 3
+                      averageRating: 4.5
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/1/songs/2
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/1/songs/2
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/1/songs/2
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews
+                          method: GET
+                        createReview:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews
+                          method: POST
+                        album:
+                          href: http://localhost:5080/api/albums/1
+                          method: GET
+                    page: 1
+                    pageSize: 2
+                    totalCount: 3
+                    totalPages: 2
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/1/songs?search=a&page=1&pageSize=2
+                        method: GET
+                      first:
+                        href: http://localhost:5080/api/albums/1/songs?search=a&page=1&pageSize=2
+                        method: GET
+                      last:
+                        href: http://localhost:5080/api/albums/1/songs?search=a&page=2&pageSize=2
+                        method: GET
+                      next:
+                        href: http://localhost:5080/api/albums/1/songs?search=a&page=2&pageSize=2
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Album_not_found:
+                  summary: Album not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Album not found.
+                    status: 404
+                    detail: Album with id 999 does not exist.
+    post:
+      tags:
+      - Songs
+      summary: Add a song to an album (admin)
+      operationId: CreateSong
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongRequest'
+            examples:
+              Create_admin:
+                summary: Create (admin)
+                value:
+                  title: Nude
+                  trackNumber: 3
+                  durationSeconds: 255
+              Validation_error:
+                summary: Validation error
+                value:
+                  title: Nude
+                  trackNumber: 0
+                  durationSeconds: 0
+        required: true
+      responses:
+        '201':
+          description: Created. The new resource is returned and the Location header points to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongDto'
+              examples:
+                Create_admin:
+                  summary: Create (admin)
+                  value:
+                    id: 20
+                    albumId: 6
+                    title: Nude
+                    trackNumber: 3
+                    durationSeconds: 255
+                    reviewCount: 0
+                    averageRating: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews
+                        method: GET
+                      createReview:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews
+                        method: POST
+                      album:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+          headers:
+            Location:
+              description: URL of the created resource.
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Validation_error:
+                  summary: Validation error
+                  value:
+                    type: https://tools.ietf.org/html/rfc4918#section-11.2
+                    title: One or more validation errors occurred.
+                    status: 422
+                    errors:
+                      trackNumber:
+                      - The field TrackNumber must be between 1 and 99.
+                      durationSeconds:
+                      - The field DurationSeconds must be between 1 and 7200.
+      security:
+      - Bearer: []
+  /api/albums/{albumId}/songs/{songId}:
+    get:
+      tags:
+      - Songs
+      summary: Get one song
+      description: 404 if the album does not exist or the song does not belong to it.
+      operationId: GetSong
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongDto'
+              examples:
+                One_song:
+                  summary: One song
+                  value:
+                    id: 2
+                    albumId: 1
+                    title: Paranoid Android
+                    trackNumber: 2
+                    durationSeconds: 383
+                    reviewCount: 3
+                    averageRating: 4.5
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/1/songs/2
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/1/songs/2
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/1/songs/2
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews
+                        method: GET
+                      createReview:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews
+                        method: POST
+                      album:
+                        href: http://localhost:5080/api/albums/1
+                        method: GET
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Song_not_on_this_album:
+                  summary: Song not on this album
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Song not found.
+                    status: 404
+                    detail: Song with id 2 does not exist.
+    put:
+      tags:
+      - Songs
+      summary: Update a song (admin)
+      operationId: UpdateSong
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongRequest'
+            examples:
+              Replace_admin:
+                summary: Replace (admin)
+                value:
+                  title: Nude
+                  trackNumber: 3
+                  durationSeconds: 256
+              Not_an_admin:
+                summary: Not an admin
+                value:
+                  title: Nude
+                  trackNumber: 3
+                  durationSeconds: 255
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongDto'
+              examples:
+                Replace_admin:
+                  summary: Replace (admin)
+                  value:
+                    id: 20
+                    albumId: 6
+                    title: Nude
+                    trackNumber: 3
+                    durationSeconds: 256
+                    reviewCount: 0
+                    averageRating: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews
+                        method: GET
+                      createReview:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews
+                        method: POST
+                      album:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_an_admin:
+                  summary: Not an admin
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: Your role does not allow this action.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+      security:
+      - Bearer: []
+    delete:
+      tags:
+      - Songs
+      summary: Delete a song (admin)
+      description: Deletes the song and all of its reviews. Returns 204 with no body.
+      operationId: DeleteSong
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_logged_in:
+                  summary: Not logged in
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                    title: Authentication required.
+                    status: 401
+                    detail: 'Log in and send the access token as ''Authorization: Bearer <token>''.'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+      - Bearer: []
+  /api/albums/{albumId}/songs/{songId}/reviews:
+    get:
+      tags:
+      - Reviews
+      summary: List reviews of a song (paged, filterable)
+      description: Returns one page of the song's reviews, newest first. Filter with author (username), userId, minRating
+        and maxRating (overall rating = average of the 4 aspects). 404 if the album or song does not exist, or the song is
+        not on that album.
+      operationId: GetReviews
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: page
+        in: query
+        description: Page number, starting at 1. Default 1.
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        description: Items per page, 1–50. Default 10.
+        schema:
+          type: integer
+          format: int32
+      - name: author
+        in: query
+        description: Only reviews by this author's username (exact match, case-insensitive).
+        schema:
+          type: string
+      - name: userId
+        in: query
+        description: Only reviews written by this user id.
+        schema:
+          type: integer
+          format: int32
+      - name: minRating
+        in: query
+        description: Only reviews whose overall rating (average of the 4 aspects) is at least this value, 0–5.
+        schema:
+          type: number
+          format: double
+      - name: maxRating
+        in: query
+        description: Only reviews whose overall rating is at most this value, 0–5.
+        schema:
+          type: number
+          format: double
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultOfReviewDto'
+              examples:
+                Reviews_of_a_song:
+                  summary: Reviews of a song
+                  value:
+                    items:
+                    - id: 5
+                      songId: 2
+                      userId: 5
+                      username: quietstorm
+                      lyricsRating: 4
+                      melodyRating: 4
+                      moodRating: 3
+                      expressivenessRating: 5
+                      overallRating: 4
+                      comment: Brilliant but exhausting. Not something I put on in the background.
+                      createdAt: '2026-11-12T21:17:14.610088Z'
+                      updatedAt: null
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/5
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/5
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/5
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/1/songs/2
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/1
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/5
+                          method: GET
+                    - id: 4
+                      songId: 2
+                      userId: 4
+                      username: bassline_ben
+                      lyricsRating: 4
+                      melodyRating: 5
+                      moodRating: 4
+                      expressivenessRating: 5
+                      overallRating: 4.5
+                      comment: Too long for casual listening, but you notice something new every time.
+                      createdAt: '2026-11-12T21:17:14.610088Z'
+                      updatedAt: null
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/4
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/4
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/1/songs/2/reviews/4
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/1/songs/2
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/1
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/4
+                          method: GET
+                    page: 1
+                    pageSize: 2
+                    totalCount: 3
+                    totalPages: 2
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews?minRating=4&page=1&pageSize=2
+                        method: GET
+                      first:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews?minRating=4&page=1&pageSize=2
+                        method: GET
+                      last:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews?minRating=4&page=2&pageSize=2
+                        method: GET
+                      next:
+                        href: http://localhost:5080/api/albums/1/songs/2/reviews?minRating=4&page=2&pageSize=2
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Invalid_filter:
+                  summary: Invalid filter
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.1
+                    title: Invalid query parameters.
+                    status: 400
+                    errors:
+                      rating:
+                      - minRating and maxRating must be between 0 and 5.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+      - Reviews
+      summary: Review a song
+      description: Logged-in users. Each aspect (lyrics, melody, mood, expressiveness) is rated 0–5; the author is the logged-in
+        user. 422 if a rating is out of range; 409 if you have already reviewed the song.
+      operationId: CreateReview
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+            examples:
+              Create_logged_in:
+                summary: Create (logged in)
+                value:
+                  lyricsRating: 4
+                  melodyRating: 5
+                  moodRating: 5
+                  expressivenessRating: 4
+                  comment: Warm, slow and beautiful. The guitars sound like water.
+              Already_reviewed:
+                summary: Already reviewed
+                value:
+                  lyricsRating: 4
+                  melodyRating: 5
+                  moodRating: 5
+                  expressivenessRating: 4
+                  comment: Warm, slow and beautiful. The guitars sound like water.
+              Validation_error:
+                summary: Validation error
+                value:
+                  lyricsRating: 4
+                  melodyRating: 7
+                  moodRating: 5
+                  expressivenessRating: 4
+                  comment: ''
+        required: true
+      responses:
+        '201':
+          description: Created. The new resource is returned and the Location header points to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDto'
+              examples:
+                Create_logged_in:
+                  summary: Create (logged in)
+                  value:
+                    id: 26
+                    songId: 20
+                    userId: 7
+                    username: new_listener
+                    lyricsRating: 4
+                    melodyRating: 5
+                    moodRating: 5
+                    expressivenessRating: 4
+                    overallRating: 4.5
+                    comment: Warm, slow and beautiful. The guitars sound like water.
+                    createdAt: '2026-11-12T21:17:17.3799871Z'
+                    updatedAt: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: DELETE
+                      song:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: GET
+                      album:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+                      author:
+                        href: http://localhost:5080/api/users/7
+                        method: GET
+          headers:
+            Location:
+              description: URL of the created resource.
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: 'Conflict. A duplicate: username or email taken, or the user already reviewed this song.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Already_reviewed:
+                  summary: Already reviewed
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.10
+                    title: Review already exists.
+                    status: 409
+                    detail: You have already reviewed this song. Edit your existing review instead.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Validation_error:
+                  summary: Validation error
+                  value:
+                    type: https://tools.ietf.org/html/rfc4918#section-11.2
+                    title: One or more validation errors occurred.
+                    status: 422
+                    errors:
+                      melodyRating:
+                      - The field MelodyRating must be between 0 and 5.
+                      comment:
+                      - The Comment field is required.
+      security:
+      - Bearer: []
+  /api/albums/{albumId}/songs/{songId}/reviews/{reviewId}:
+    get:
+      tags:
+      - Reviews
+      summary: Get one review
+      operationId: GetReview
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDto'
+              examples:
+                One_review:
+                  summary: One review
+                  value:
+                    id: 26
+                    songId: 20
+                    userId: 7
+                    username: new_listener
+                    lyricsRating: 4
+                    melodyRating: 5
+                    moodRating: 5
+                    expressivenessRating: 4
+                    overallRating: 4.5
+                    comment: Warm, slow and beautiful. The guitars sound like water.
+                    createdAt: '2026-11-12T21:17:17.379987Z'
+                    updatedAt: null
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: DELETE
+                      song:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: GET
+                      album:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+                      author:
+                        href: http://localhost:5080/api/users/7
+                        method: GET
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_found:
+                  summary: Not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Review not found.
+                    status: 404
+                    detail: Review with id 999 does not exist.
+    put:
+      tags:
+      - Reviews
+      summary: Edit a review
+      description: The review's author or an admin. Replaces the ratings and comment; the author cannot be changed.
+      operationId: UpdateReview
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReviewRequest'
+            examples:
+              Edit_own_review:
+                summary: Edit own review
+                value:
+                  lyricsRating: 4
+                  melodyRating: 5
+                  moodRating: 4
+                  expressivenessRating: 4
+                  comment: Warm, slow and beautiful. The guitars sound like water.
+              Someone_else_s_review:
+                summary: Someone else's review
+                value:
+                  lyricsRating: 4
+                  melodyRating: 5
+                  moodRating: 5
+                  expressivenessRating: 4
+                  comment: Warm, slow and beautiful. The guitars sound like water.
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDto'
+              examples:
+                Edit_own_review:
+                  summary: Edit own review
+                  value:
+                    id: 26
+                    songId: 20
+                    userId: 7
+                    username: new_listener
+                    lyricsRating: 4
+                    melodyRating: 5
+                    moodRating: 4
+                    expressivenessRating: 4
+                    overallRating: 4.25
+                    comment: Warm, slow and beautiful. The guitars sound like water.
+                    createdAt: '2026-11-12T21:17:17.379987Z'
+                    updatedAt: '2026-11-12T21:17:17.4427322Z'
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/albums/6/songs/20/reviews/26
+                        method: DELETE
+                      song:
+                        href: http://localhost:5080/api/albums/6/songs/20
+                        method: GET
+                      album:
+                        href: http://localhost:5080/api/albums/6
+                        method: GET
+                      author:
+                        href: http://localhost:5080/api/users/7
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Someone_else_s_review:
+                  summary: Someone else's review
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: You can only edit your own reviews.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+      security:
+      - Bearer: []
+    delete:
+      tags:
+      - Reviews
+      summary: Delete a review
+      description: The review's author, or an admin removing a harmful review. Returns 204 with no body.
+      operationId: DeleteReview
+      parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: songId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_found:
+                  summary: Not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: Review not found.
+                    status: 404
+                    detail: Review with id 26 does not exist.
+      security:
+      - Bearer: []
+  /api/users:
+    get:
+      tags:
+      - Users
+      summary: List users (paged, filterable)
+      description: Filter with search (username or email) and role (User / Admin).
+      operationId: GetUsers
+      parameters:
+      - name: page
+        in: query
+        description: Page number, starting at 1. Default 1.
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        description: Items per page, 1–50. Default 10.
+        schema:
+          type: integer
+          format: int32
+      - name: search
+        in: query
+        description: Text to find in the username or email (case-insensitive).
+        schema:
+          type: string
+      - name: role
+        in: query
+        description: 'Only users with this role: User or Admin.'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultOfUserDto'
+              examples:
+                List_users_admin:
+                  summary: List users (admin)
+                  value:
+                    items:
+                    - id: 2
+                      username: mantas
+                      email: mantas@glazeaudio.test
+                      role: User
+                      bio: Listens to everything from Radiohead to Kendrick.
+                      createdAt: '2026-11-12T21:17:14.04918Z'
+                      reviewCount: 6
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/users/2
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/users/2
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/users/2
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/users/2/reviews
+                          method: GET
+                        users:
+                          href: http://localhost:5080/api/users
+                          method: GET
+                    - id: 3
+                      username: vinyl_owl
+                      email: vinyl_owl@glazeaudio.test
+                      role: User
+                      bio: Collects records, mostly 70s and 90s.
+                      createdAt: '2026-11-12T21:17:14.112777Z'
+                      reviewCount: 6
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/users/3
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/users/3
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/users/3
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/users/3/reviews
+                          method: GET
+                        users:
+                          href: http://localhost:5080/api/users
+                          method: GET
+                    page: 1
+                    pageSize: 2
+                    totalCount: 6
+                    totalPages: 3
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users?role=User&page=1&pageSize=2
+                        method: GET
+                      first:
+                        href: http://localhost:5080/api/users?role=User&page=1&pageSize=2
+                        method: GET
+                      last:
+                        href: http://localhost:5080/api/users?role=User&page=3&pageSize=2
+                        method: GET
+                      next:
+                        href: http://localhost:5080/api/users?role=User&page=2&pageSize=2
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_an_admin:
+                  summary: Not an admin
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: Your role does not allow this action.
+      security:
+      - Bearer: []
+    post:
+      tags:
+      - Users
+      summary: Create a user (admin)
+      description: Admin-only. Creates an account with the User role; people register themselves with POST /api/auth/register.
+        The password is stored as a salted hash and never returned. 409 if the username or email is already taken.
+      operationId: CreateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              Create_admin:
+                summary: Create (admin)
+                value:
+                  username: guest_dj
+                  email: guest_dj@example.com
+                  password: Listening123!
+              Email_taken:
+                summary: Email taken
+                value:
+                  username: guest_dj2
+                  email: guest_dj@example.com
+                  password: Listening123!
+        required: true
+      responses:
+        '201':
+          description: Created. The new resource is returned and the Location header points to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+              examples:
+                Create_admin:
+                  summary: Create (admin)
+                  value:
+                    id: 8
+                    username: guest_dj
+                    email: guest_dj@example.com
+                    role: User
+                    bio: null
+                    createdAt: '2026-11-12T21:17:17.5370975Z'
+                    reviewCount: 0
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users/8
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/users/8
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/users/8
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/users/8/reviews
+                        method: GET
+                      users:
+                        href: http://localhost:5080/api/users
+                        method: GET
+          headers:
+            Location:
+              description: URL of the created resource.
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: 'Conflict. A duplicate: username or email taken, or the user already reviewed this song.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Email_taken:
+                  summary: Email taken
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.10
+                    title: Email already registered.
+                    status: 409
+                    detail: The email 'guest_dj@example.com' is already in use.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+      security:
+      - Bearer: []
+  /api/users/{userId}:
+    get:
+      tags:
+      - Users
+      summary: Get one user
+      description: Public profile. The email is included only for the user themself and admins.
+      operationId: GetUser
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+              examples:
+                Public_profile:
+                  summary: Public profile
+                  value:
+                    id: 2
+                    username: mantas
+                    email: null
+                    role: User
+                    bio: Listens to everything from Radiohead to Kendrick.
+                    createdAt: '2026-11-12T21:17:14.04918Z'
+                    reviewCount: 6
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users/2
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/users/2
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/users/2
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/users/2/reviews
+                        method: GET
+                      users:
+                        href: http://localhost:5080/api/users
+                        method: GET
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Not_found:
+                  summary: Not found
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.5
+                    title: User not found.
+                    status: 404
+                    detail: User with id 999 does not exist.
+    put:
+      tags:
+      - Users
+      summary: Update a user
+      description: The account owner or an admin. Replaces username, email and bio; role is optional and only admins may change
+        it. 409 if the new username or email is already taken.
+      operationId: UpdateUser
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            examples:
+              Edit_own_account:
+                summary: Edit own account
+                value:
+                  username: new_listener
+                  email: new_listener@example.com
+                  bio: Jazz and soul.
+              Role_change_by_a_user:
+                summary: Role change by a user
+                value:
+                  username: new_listener
+                  email: new_listener@example.com
+                  role: Admin
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+              examples:
+                Edit_own_account:
+                  summary: Edit own account
+                  value:
+                    id: 7
+                    username: new_listener
+                    email: new_listener@example.com
+                    role: User
+                    bio: Jazz and soul.
+                    createdAt: '2026-11-12T21:17:16.056779Z'
+                    reviewCount: 1
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users/7
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/users/7
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/users/7
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/users/7/reviews
+                        method: GET
+                      users:
+                        href: http://localhost:5080/api/users
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Role_change_by_a_user:
+                  summary: Role change by a user
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: Only admins can change roles.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: 'Conflict. A duplicate: username or email taken, or the user already reviewed this song.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+      security:
+      - Bearer: []
+    delete:
+      tags:
+      - Users
+      summary: Delete a user
+      description: The account owner or an admin. Deletes the account together with all reviews it wrote. Returns 204 with
+        no body.
+      operationId: DeleteUser
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: 'Forbidden. Logged in, but not allowed: admin-only action, or the resource belongs to someone else.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Someone_else_s_account:
+                  summary: Someone else's account
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.4
+                    title: Forbidden.
+                    status: 403
+                    detail: You can only delete your own account.
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      security:
+      - Bearer: []
+  /api/users/{userId}/reviews:
+    get:
+      tags:
+      - Users
+      summary: List a user's reviews (paged)
+      description: Every review the user has written, newest first, with the song and album each one belongs to. Filter with
+        minRating.
+      operationId: GetUserReviews
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: page
+        in: query
+        description: Page number, starting at 1. Default 1.
+        schema:
+          type: integer
+          format: int32
+      - name: pageSize
+        in: query
+        description: Items per page, 1–50. Default 10.
+        schema:
+          type: integer
+          format: int32
+      - name: minRating
+        in: query
+        description: Only reviews whose overall rating is at least this value, 0–5.
+        schema:
+          type: number
+          format: double
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedResultOfUserReviewDto'
+              examples:
+                A_user_s_reviews:
+                  summary: A user's reviews
+                  value:
+                    items:
+                    - id: 24
+                      albumId: 5
+                      albumTitle: Currents
+                      albumArtist: Tame Impala
+                      songId: 19
+                      songTitle: The Less I Know the Better
+                      overallRating: 4
+                      comment: That bassline carries everything. The story is silly, which fits the song.
+                      createdAt: '2026-11-12T21:17:14.610153Z'
+                      updatedAt: null
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/5/songs/19/reviews/24
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/5/songs/19
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/5
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/2
+                          method: GET
+                    - id: 21
+                      albumId: 4
+                      albumTitle: Rumours
+                      albumArtist: Fleetwood Mac
+                      songId: 14
+                      songTitle: Dreams
+                      overallRating: 4.25
+                      comment: Relaxing without being boring. I play it on long drives.
+                      createdAt: '2026-11-12T21:17:14.610138Z'
+                      updatedAt: null
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/albums/4/songs/14/reviews/21
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/albums/4/songs/14/reviews/21
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/albums/4/songs/14/reviews/21
+                          method: DELETE
+                        song:
+                          href: http://localhost:5080/api/albums/4/songs/14
+                          method: GET
+                        album:
+                          href: http://localhost:5080/api/albums/4
+                          method: GET
+                        author:
+                          href: http://localhost:5080/api/users/2
+                          method: GET
+                    page: 1
+                    pageSize: 2
+                    totalCount: 6
+                    totalPages: 3
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users/2/reviews?page=1&pageSize=2
+                        method: GET
+                      first:
+                        href: http://localhost:5080/api/users/2/reviews?page=1&pageSize=2
+                        method: GET
+                      last:
+                        href: http://localhost:5080/api/users/2/reviews?page=3&pageSize=2
+                        method: GET
+                      next:
+                        href: http://localhost:5080/api/users/2/reviews?page=2&pageSize=2
+                        method: GET
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+        '404':
+          description: Not Found. The resource (or its parent album / song) does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Create an account and log in
+      description: Creates an account with the User role and returns tokens, so the client is logged in right away. 409 if
+        the username or email is taken.
+      operationId: Register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              Register:
+                summary: Register
+                value:
+                  username: new_listener
+                  email: new_listener@example.com
+                  password: Listening123!
+                  bio: Mostly jazz.
+              Username_taken:
+                summary: Username taken
+                value:
+                  username: mantas
+                  email: other@example.com
+                  password: Listening123!
+              Validation_error:
+                summary: Validation error
+                value:
+                  username: x
+                  email: not-an-email
+                  password: '123'
+        required: true
+      responses:
+        '201':
+          description: Created. The new resource is returned and the Location header points to it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                Register:
+                  summary: Register
+                  value:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5…
+                    accessTokenExpiresAt: '2026-11-12T21:32:16.1207792Z'
+                    refreshToken: Kdc25aUgiuhew4N6EuCfD1ra…
+                    refreshTokenExpiresAt: '2026-11-19T21:17:16.1210174Z'
+                    user:
+                      id: 7
+                      username: new_listener
+                      email: new_listener@example.com
+                      role: User
+                      bio: Mostly jazz.
+                      createdAt: '2026-11-12T21:17:16.0567799Z'
+                      reviewCount: 0
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/users/7
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/users/7
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/users/7
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/users/7/reviews
+                          method: GET
+                        users:
+                          href: http://localhost:5080/api/users
+                          method: GET
+                    tokenType: Bearer
+          headers:
+            Location:
+              description: URL of the created resource.
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '409':
+          description: 'Conflict. A duplicate: username or email taken, or the user already reviewed this song.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Username_taken:
+                  summary: Username taken
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.10
+                    title: Username already taken.
+                    status: 409
+                    detail: The username 'mantas' is already in use.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Validation_error:
+                  summary: Validation error
+                  value:
+                    type: https://tools.ietf.org/html/rfc4918#section-11.2
+                    title: One or more validation errors occurred.
+                    status: 422
+                    errors:
+                      username:
+                      - The field Username must be a string with a minimum length of 3 and a maximum length of 50.
+                      email:
+                      - The Email field is not a valid e-mail address.
+                      password:
+                      - The field Password must be a string with a minimum length of 8 and a maximum length of 100.
+  /api/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Log in with username (or email) and password
+      description: Returns an access token (valid 15 minutes, contains the user's id, name and role) and a refresh token (valid
+        7 days). 401 for a wrong login or password.
+      operationId: Login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              Log_in:
+                summary: Log in
+                value:
+                  login: new_listener
+                  password: Listening123!
+              Wrong_password:
+                summary: Wrong password
+                value:
+                  login: new_listener
+                  password: wrong-password
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                Log_in:
+                  summary: Log in
+                  value:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5…
+                    accessTokenExpiresAt: '2026-11-12T21:32:16.2570528Z'
+                    refreshToken: 7HQXjLg5IpYjzxswC_4u2ozv…
+                    refreshTokenExpiresAt: '2026-11-19T21:17:16.2573293Z'
+                    user:
+                      id: 7
+                      username: new_listener
+                      email: new_listener@example.com
+                      role: User
+                      bio: Mostly jazz.
+                      createdAt: '2026-11-12T21:17:16.056779Z'
+                      reviewCount: 0
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/users/7
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/users/7
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/users/7
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/users/7/reviews
+                          method: GET
+                        users:
+                          href: http://localhost:5080/api/users
+                          method: GET
+                    tokenType: Bearer
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Wrong_password:
+                  summary: Wrong password
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                    title: Invalid login or password.
+                    status: 401
+                    detail: Check your username/email and password.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+  /api/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Get a new access token
+      description: Exchanges a valid refresh token for a new access token and a new refresh token (the old one stops working).
+        401 if the refresh token is invalid, expired or revoked.
+      operationId: RefreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              Refresh:
+                summary: Refresh
+                value:
+                  refreshToken: 7HQXjLg5IpYjzxswC_4u2ozv…
+              Old_refresh_token_reused:
+                summary: Old refresh token reused
+                value:
+                  refreshToken: 7HQXjLg5IpYjzxswC_4u2ozv…
+        required: true
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                Refresh:
+                  summary: Refresh
+                  value:
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5…
+                    accessTokenExpiresAt: '2026-11-12T21:32:16.3814925Z'
+                    refreshToken: eZMrM0Dbf9JC-TsqOyDn4jOi…
+                    refreshTokenExpiresAt: '2026-11-19T21:17:16.3817441Z'
+                    user:
+                      id: 7
+                      username: new_listener
+                      email: new_listener@example.com
+                      role: User
+                      bio: Mostly jazz.
+                      createdAt: '2026-11-12T21:17:16.056779Z'
+                      reviewCount: 0
+                      _links:
+                        self:
+                          href: http://localhost:5080/api/users/7
+                          method: GET
+                        update:
+                          href: http://localhost:5080/api/users/7
+                          method: PUT
+                        delete:
+                          href: http://localhost:5080/api/users/7
+                          method: DELETE
+                        reviews:
+                          href: http://localhost:5080/api/users/7/reviews
+                          method: GET
+                        users:
+                          href: http://localhost:5080/api/users
+                          method: GET
+                    tokenType: Bearer
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Old_refresh_token_reused:
+                  summary: Old refresh token reused
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                    title: Refresh token was already used.
+                    status: 401
+                    detail: For safety all sessions were logged out. Log in again.
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+  /api/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Log out (revoke a refresh token)
+      description: Revokes the refresh token so it can no longer be used. Returns 204 even if the token was already invalid.
+      operationId: Logout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              Log_out:
+                summary: Log out
+                value:
+                  refreshToken: _qQpEsZTLXwAYPv6lgWekg5E…
+        required: true
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+  /api/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: The logged-in user
+      operationId: GetCurrentUser
+      responses:
+        '200':
+          description: OK. The resource (or page of resources) is returned as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+              examples:
+                Current_user:
+                  summary: Current user
+                  value:
+                    id: 7
+                    username: new_listener
+                    email: new_listener@example.com
+                    role: User
+                    bio: Mostly jazz.
+                    createdAt: '2026-11-12T21:17:16.056779Z'
+                    reviewCount: 0
+                    _links:
+                      self:
+                        href: http://localhost:5080/api/users/7
+                        method: GET
+                      update:
+                        href: http://localhost:5080/api/users/7
+                        method: PUT
+                      delete:
+                        href: http://localhost:5080/api/users/7
+                        method: DELETE
+                      reviews:
+                        href: http://localhost:5080/api/users/7/reviews
+                        method: GET
+                      users:
+                        href: http://localhost:5080/api/users
+                        method: GET
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                No_token:
+                  summary: No token
+                  value:
+                    type: https://tools.ietf.org/html/rfc9110#section-15.5.2
+                    title: Authentication required.
+                    status: 401
+                    detail: 'Log in and send the access token as ''Authorization: Bearer <token>''.'
+      security:
+      - Bearer: []
+  /api/auth/password:
+    put:
+      tags:
+      - Auth
+      summary: Change your password
+      description: Logs out all other sessions (revokes every refresh token). 422 if the current password is wrong.
+      operationId: ChangePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            examples:
+              Change_password:
+                summary: Change password
+                value:
+                  currentPassword: Listening123!
+                  newPassword: Listening456!
+              Wrong_current_password:
+                summary: Wrong current password
+                value:
+                  currentPassword: nope-nope
+                  newPassword: Listening789!
+        required: true
+      responses:
+        '204':
+          description: No Content. The action succeeded and there is no response body.
+        '400':
+          description: Bad Request. The JSON body could not be read, or a query parameter is invalid (e.g. pageSize over 50).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                Malformed_JSON:
+                  summary: Body is not valid JSON
+                  value: *id001
+        '401':
+          description: 'Unauthorized. The access token is missing, invalid or expired (for /auth endpoints: wrong login or
+            refresh token).'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Unprocessable Entity. Validation failed; `errors` lists the messages for each field.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HttpValidationProblemDetails'
+              examples:
+                Wrong_current_password:
+                  summary: Wrong current password
+                  value:
+                    type: https://tools.ietf.org/html/rfc4918#section-11.2
+                    title: One or more validation errors occurred.
+                    status: 422
+                    errors:
+                      currentPassword:
+                      - The current password is wrong.
+      security:
+      - Bearer: []
+components:
+  schemas:
+    AlbumDto:
+      required:
+      - id
+      - title
+      - artist
+      - releaseYear
+      - genre
+      - coverUrl
+      - songCount
+      - reviewCount
+      - averageRating
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        title:
+          type: string
+        artist:
+          type: string
+        releaseYear:
+          type: integer
+          format: int32
+        genre:
+          type: string
+        coverUrl:
+          type: string
+          nullable: true
+        songCount:
+          type: integer
+          format: int32
+        reviewCount:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    AlbumOverviewDto:
+      required:
+      - album
+      - stats
+      - songs
+      - topRatedSong
+      - latestReviews
+      type: object
+      properties:
+        album:
+          $ref: '#/components/schemas/AlbumSummary'
+        stats:
+          $ref: '#/components/schemas/AlbumStats'
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverviewSong'
+        topRatedSong:
+          $ref: '#/components/schemas/OverviewSong2'
+        latestReviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverviewReview'
+        _links:
+          type: object
+          additionalProperties: {}
+    AlbumRequest:
+      required:
+      - title
+      - artist
+      - releaseYear
+      - genre
+      - coverUrl
+      type: object
+      properties:
+        title:
+          maxLength: 200
+          minLength: 1
+          type: string
+          nullable: true
+        artist:
+          maxLength: 200
+          minLength: 1
+          type: string
+          nullable: true
+        releaseYear:
+          maximum: 2100
+          minimum: 1900
+          type: integer
+          format: int32
+          nullable: true
+        genre:
+          maxLength: 100
+          minLength: 1
+          type: string
+          nullable: true
+        coverUrl:
+          maxLength: 500
+          minLength: 0
+          pattern: ^(https?://[^\s]+|/[^\s]*)$
+          type: string
+          nullable: true
+    AlbumStats:
+      required:
+      - songCount
+      - reviewCount
+      - totalDurationSeconds
+      - averageRating
+      - aspectAverages
+      type: object
+      properties:
+        songCount:
+          type: integer
+          format: int32
+        reviewCount:
+          type: integer
+          format: int32
+        totalDurationSeconds:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+          nullable: true
+        aspectAverages:
+          $ref: '#/components/schemas/AspectAverages'
+    AlbumSummary:
+      required:
+      - id
+      - title
+      - artist
+      - releaseYear
+      - genre
+      - coverUrl
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        title:
+          type: string
+        artist:
+          type: string
+        releaseYear:
+          type: integer
+          format: int32
+        genre:
+          type: string
+        coverUrl:
+          type: string
+          nullable: true
+    ApiRoot:
+      required:
+      - name
+      - version
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    AspectAverages:
+      required:
+      - lyrics
+      - melody
+      - mood
+      - expressiveness
+      type: object
+      properties:
+        lyrics:
+          type: number
+          format: double
+        melody:
+          type: number
+          format: double
+        mood:
+          type: number
+          format: double
+        expressiveness:
+          type: number
+          format: double
+      nullable: true
+    AuthResponse:
+      required:
+      - accessToken
+      - accessTokenExpiresAt
+      - refreshToken
+      - refreshTokenExpiresAt
+      - user
+      type: object
+      properties:
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+        refreshTokenExpiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/UserDto'
+        tokenType:
+          type: string
+          nullable: true
+    ChangePasswordRequest:
+      required:
+      - currentPassword
+      - newPassword
+      type: object
+      properties:
+        currentPassword:
+          maxLength: 100
+          minLength: 1
+          type: string
+          nullable: true
+        newPassword:
+          maxLength: 100
+          minLength: 8
+          type: string
+          nullable: true
+    CreateReviewRequest:
+      required:
+      - lyricsRating
+      - melodyRating
+      - moodRating
+      - expressivenessRating
+      - comment
+      type: object
+      properties:
+        lyricsRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        melodyRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        moodRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        expressivenessRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        comment:
+          maxLength: 2000
+          minLength: 1
+          type: string
+          nullable: true
+    CreateUserRequest:
+      required:
+      - username
+      - email
+      - password
+      - bio
+      type: object
+      properties:
+        username:
+          maxLength: 50
+          minLength: 3
+          pattern: ^[A-Za-z0-9_.-]+$
+          type: string
+          nullable: true
+        email:
+          maxLength: 200
+          minLength: 0
+          type: string
+          nullable: true
+        password:
+          maxLength: 100
+          minLength: 8
+          type: string
+          nullable: true
+        bio:
+          maxLength: 500
+          minLength: 0
+          type: string
+          nullable: true
+    HttpValidationProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          format: int32
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    Link:
+      required:
+      - href
+      type: object
+      properties:
+        href:
+          type: string
+        method:
+          type: string
+          default: GET
+    LoginRequest:
+      required:
+      - login
+      - password
+      type: object
+      properties:
+        login:
+          maxLength: 200
+          minLength: 1
+          type: string
+          nullable: true
+        password:
+          maxLength: 100
+          minLength: 1
+          type: string
+          nullable: true
+    OverviewReview:
+      required:
+      - id
+      - songId
+      - songTitle
+      - userId
+      - username
+      - overallRating
+      - comment
+      - createdAt
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        songId:
+          type: integer
+          format: int32
+        songTitle:
+          type: string
+        userId:
+          type: integer
+          format: int32
+        username:
+          type: string
+        overallRating:
+          type: number
+          format: double
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        _links:
+          type: object
+          additionalProperties: {}
+    OverviewSong:
+      required:
+      - id
+      - trackNumber
+      - title
+      - durationSeconds
+      - reviewCount
+      - averageRating
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        trackNumber:
+          type: integer
+          format: int32
+        title:
+          type: string
+        durationSeconds:
+          type: integer
+          format: int32
+        reviewCount:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    OverviewSong2:
+      required:
+      - id
+      - trackNumber
+      - title
+      - durationSeconds
+      - reviewCount
+      - averageRating
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        trackNumber:
+          type: integer
+          format: int32
+        title:
+          type: string
+        durationSeconds:
+          type: integer
+          format: int32
+        reviewCount:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+      nullable: true
+    PagedResultOfAlbumDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalCount
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumDto'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties: {}
+    PagedResultOfReviewDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalCount
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewDto'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties: {}
+    PagedResultOfSongDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalCount
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongDto'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties: {}
+    PagedResultOfUserDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalCount
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserDto'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties: {}
+    PagedResultOfUserReviewDto:
+      required:
+      - items
+      - page
+      - pageSize
+      - totalCount
+      - totalPages
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserReviewDto'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        totalCount:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties: {}
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          format: int32
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+    RefreshRequest:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          maxLength: 200
+          minLength: 1
+          type: string
+          nullable: true
+    ReviewDto:
+      required:
+      - id
+      - songId
+      - userId
+      - username
+      - lyricsRating
+      - melodyRating
+      - moodRating
+      - expressivenessRating
+      - overallRating
+      - comment
+      - createdAt
+      - updatedAt
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        songId:
+          type: integer
+          format: int32
+        userId:
+          type: integer
+          format: int32
+        username:
+          type: string
+        lyricsRating:
+          type: integer
+          format: int32
+        melodyRating:
+          type: integer
+          format: int32
+        moodRating:
+          type: integer
+          format: int32
+        expressivenessRating:
+          type: integer
+          format: int32
+        overallRating:
+          type: number
+          format: double
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    SongDto:
+      required:
+      - id
+      - albumId
+      - title
+      - trackNumber
+      - durationSeconds
+      - reviewCount
+      - averageRating
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        albumId:
+          type: integer
+          format: int32
+        title:
+          type: string
+        trackNumber:
+          type: integer
+          format: int32
+        durationSeconds:
+          type: integer
+          format: int32
+        reviewCount:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    SongRequest:
+      required:
+      - title
+      - trackNumber
+      - durationSeconds
+      type: object
+      properties:
+        title:
+          maxLength: 200
+          minLength: 1
+          type: string
+          nullable: true
+        trackNumber:
+          maximum: 99
+          minimum: 1
+          type: integer
+          format: int32
+          nullable: true
+        durationSeconds:
+          maximum: 7200
+          minimum: 1
+          type: integer
+          format: int32
+          nullable: true
+    UpdateReviewRequest:
+      required:
+      - lyricsRating
+      - melodyRating
+      - moodRating
+      - expressivenessRating
+      - comment
+      type: object
+      properties:
+        lyricsRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        melodyRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        moodRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        expressivenessRating:
+          maximum: 5
+          minimum: 0
+          type: integer
+          format: int32
+          nullable: true
+        comment:
+          maxLength: 2000
+          minLength: 1
+          type: string
+          nullable: true
+    UpdateUserRequest:
+      required:
+      - username
+      - email
+      - bio
+      type: object
+      properties:
+        username:
+          maxLength: 50
+          minLength: 3
+          pattern: ^[A-Za-z0-9_.-]+$
+          type: string
+          nullable: true
+        email:
+          maxLength: 200
+          minLength: 0
+          type: string
+          nullable: true
+        bio:
+          maxLength: 500
+          minLength: 0
+          type: string
+          nullable: true
+        role:
+          pattern: ^(User|Admin)$
+          type: string
+          default: null
+          nullable: true
+    UserDto:
+      required:
+      - id
+      - username
+      - email
+      - role
+      - bio
+      - createdAt
+      - reviewCount
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        username:
+          type: string
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        reviewCount:
+          type: integer
+          format: int32
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+    UserReviewDto:
+      required:
+      - id
+      - albumId
+      - albumTitle
+      - albumArtist
+      - songId
+      - songTitle
+      - overallRating
+      - comment
+      - createdAt
+      - updatedAt
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        albumId:
+          type: integer
+          format: int32
+        albumTitle:
+          type: string
+        albumArtist:
+          type: string
+        songId:
+          type: integer
+          format: int32
+        songTitle:
+          type: string
+        overallRating:
+          type: number
+          format: double
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from /api/auth/login, /api/auth/register or /api/auth/refresh.
+tags:
+- name: Root
+- name: Albums
+- name: Songs
+- name: Reviews
+- name: Users
+- name: Auth

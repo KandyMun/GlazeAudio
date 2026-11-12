@@ -1,0 +1,37 @@
+# Builds the ASP.NET Core API and deploys it to Azure App Service.
+# Runs on every push to main that changes the API (src/) and can be started by hand.
+#
+# Needs (Settings -> Secrets and variables -> Actions), set by infra/azure-deploy-setup.sh:
+#   secret   AZURE_WEBAPP_PUBLISH_PROFILE   publish profile XML of the App Service
+#   variable AZURE_WEBAPP_NAME              name of the App Service (e.g. glazeaudio-api-ab12cd)
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", ".github/workflows/deploy-api.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        run: dotnet publish src/GlazeAudio.Api -c Release -o ./publish
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
