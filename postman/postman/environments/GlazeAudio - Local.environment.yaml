@@ -1,4 +1,0 @@
-name: GlazeAudio - Local
-values:
-  - key: baseUrl
-    value: 'http://localhost:5080'
