@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using GlazeAudio.Api.Contracts;
 using GlazeAudio.Api.Data;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Infrastructure.Auth;
 using GlazeAudio.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,27 +35,34 @@ public static class ReviewEndpoints
             .WithName("CreateReview")
             .WithSummary("Review a song")
             .WithDescription(
-                "Each aspect (lyrics, melody, mood, expressiveness) is rated 0–5. The author is given as userId " +
-                "(until authentication is added). 422 if a rating is out of range or the user does not exist; " +
-                "409 if this user has already reviewed the song.")
+                "Logged-in users. Each aspect (lyrics, melody, mood, expressiveness) is rated 0–5; the author is the " +
+                "logged-in user. 422 if a rating is out of range; 409 if you have already reviewed the song.")
+            .RequireAuthorization()
             .WithValidation<CreateReviewRequest>()
             .Produces<ReviewDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPut("/{reviewId:int}", Update)
             .WithName("UpdateReview")
             .WithSummary("Edit a review")
-            .WithDescription("Replaces the ratings and comment. The author cannot be changed.")
+            .WithDescription("The review's author or an admin. Replaces the ratings and comment; the author cannot be changed.")
+            .RequireAuthorization()
             .WithValidation<UpdateReviewRequest>()
             .Produces<ReviewDto>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{reviewId:int}", Delete)
             .WithName("DeleteReview")
             .WithSummary("Delete a review")
-            .WithDescription("Used by administrators to remove harmful reviews. Returns 204 with no body.")
+            .WithDescription("The review's author, or an admin removing a harmful review. Returns 204 with no body.")
+            .RequireAuthorization()
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;
@@ -129,18 +138,18 @@ public static class ReviewEndpoints
         return review is null ? ApiProblems.NotFound("Review", reviewId) : Results.Ok(ToDto(review, albumId, request));
     }
 
-    private static async Task<IResult> Create(int albumId, int songId, CreateReviewRequest body, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
+    private static async Task<IResult> Create(int albumId, int songId, CreateReviewRequest body, ClaimsPrincipal principal, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         if (await CheckParents(albumId, songId, db, ct) is { } notFound) return notFound;
 
-        var author = await db.Users.FindAsync([body.UserId!.Value], ct);
+        var author = await db.Users.FindAsync([principal.GetUserId()], ct);
         if (author is null)
-            return ApiProblems.InvalidField("userId", $"User with id {body.UserId} does not exist.");
+            return ApiProblems.Unauthorized("Account no longer exists.", "Log in again.");
 
         if (await db.Reviews.AnyAsync(r => r.SongId == songId && r.UserId == author.Id, ct))
         {
             return ApiProblems.Conflict("Review already exists.",
-                $"User '{author.Username}' has already reviewed this song. Edit the existing review instead.");
+                "You have already reviewed this song. Edit your existing review instead.");
         }
 
         var review = new Review
@@ -159,12 +168,14 @@ public static class ReviewEndpoints
         return Results.CreatedAtRoute("GetReview", new { albumId, songId, reviewId = review.Id }, ToDto(review, albumId, request));
     }
 
-    private static async Task<IResult> Update(int albumId, int songId, int reviewId, UpdateReviewRequest body, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
+    private static async Task<IResult> Update(int albumId, int songId, int reviewId, UpdateReviewRequest body, ClaimsPrincipal principal, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         if (await CheckParents(albumId, songId, db, ct) is { } notFound) return notFound;
 
         var review = await db.Reviews.Include(r => r.User).FirstOrDefaultAsync(r => r.Id == reviewId && r.SongId == songId, ct);
         if (review is null) return ApiProblems.NotFound("Review", reviewId);
+        if (!principal.IsSelfOrAdmin(review.UserId))
+            return ApiProblems.Forbidden("You can only edit your own reviews.");
 
         review.LyricsRating = body.LyricsRating!.Value;
         review.MelodyRating = body.MelodyRating!.Value;
@@ -177,11 +188,16 @@ public static class ReviewEndpoints
         return Results.Ok(ToDto(review, albumId, request));
     }
 
-    private static async Task<IResult> Delete(int albumId, int songId, int reviewId, GlazeAudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> Delete(int albumId, int songId, int reviewId, ClaimsPrincipal principal, GlazeAudioDbContext db, CancellationToken ct)
     {
         if (await CheckParents(albumId, songId, db, ct) is { } notFound) return notFound;
 
-        var deleted = await db.Reviews.Where(r => r.Id == reviewId && r.SongId == songId).ExecuteDeleteAsync(ct);
-        return deleted == 0 ? ApiProblems.NotFound("Review", reviewId) : Results.NoContent();
+        var ownerId = await db.Reviews.Where(r => r.Id == reviewId && r.SongId == songId).Select(r => (int?)r.UserId).FirstOrDefaultAsync(ct);
+        if (ownerId is null) return ApiProblems.NotFound("Review", reviewId);
+        if (!principal.IsSelfOrAdmin(ownerId.Value))
+            return ApiProblems.Forbidden("You can only delete your own reviews.");
+
+        await db.Reviews.Where(r => r.Id == reviewId).ExecuteDeleteAsync(ct);
+        return Results.NoContent();
     }
 }

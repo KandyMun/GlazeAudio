@@ -99,6 +99,7 @@ public static class SeedData
         new Album
         {
             Title = "OK Computer", Artist = "Radiohead", ReleaseYear = 1997, Genre = "Alternative Rock",
+            CoverUrl = "/covers/cobalt-drip.jpg", // original artwork shipped with the frontend (web/public/covers)
             Songs =
             [
                 S(1, "Airbag", 284,
@@ -118,6 +119,7 @@ public static class SeedData
         new Album
         {
             Title = "Random Access Memories", Artist = "Daft Punk", ReleaseYear = 2013, Genre = "Electronic / Disco",
+            CoverUrl = "/covers/ink-speckle.jpg",
             Songs =
             [
                 S(1, "Give Life Back to Music", 274,
@@ -134,6 +136,7 @@ public static class SeedData
         new Album
         {
             Title = "To Pimp a Butterfly", Artist = "Kendrick Lamar", ReleaseYear = 2015, Genre = "Hip-Hop / Jazz Rap",
+            CoverUrl = "/covers/ochre-crackle.jpg",
             Songs =
             [
                 S(1, "Wesley's Theory", 287,
@@ -150,6 +153,7 @@ public static class SeedData
         new Album
         {
             Title = "Rumours", Artist = "Fleetwood Mac", ReleaseYear = 1977, Genre = "Soft Rock",
+            CoverUrl = "/covers/celadon-pool.jpg",
             Songs =
             [
                 S(1, "Go Your Own Way", 223,
@@ -165,6 +169,7 @@ public static class SeedData
         new Album
         {
             Title = "Currents", Artist = "Tame Impala", ReleaseYear = 2015, Genre = "Psychedelic Pop",
+            CoverUrl = "/covers/plum-flow.jpg",
             Songs =
             [
                 S(1, "Let It Happen", 467,

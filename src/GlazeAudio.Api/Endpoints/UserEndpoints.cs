@@ -1,6 +1,8 @@
 using GlazeAudio.Api.Contracts;
 using GlazeAudio.Api.Data;
+using System.Security.Claims;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Infrastructure.Auth;
 using GlazeAudio.Api.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +22,16 @@ public static class UserEndpoints
             .WithName("GetUsers")
             .WithSummary("List users (paged, filterable)")
             .WithDescription("Filter with search (username or email) and role (User / Admin).")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
             .Produces<PagedResult<UserDto>>()
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{userId:int}", GetById)
             .WithName("GetUser")
             .WithSummary("Get one user")
+            .WithDescription("Public profile. The email is included only for the user themself and admins.")
             .Produces<UserDto>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -41,41 +47,52 @@ public static class UserEndpoints
 
         group.MapPost("/", Create)
             .WithName("CreateUser")
-            .WithSummary("Register a user")
+            .WithSummary("Create a user (admin)")
             .WithDescription(
-                "Creates an account with the User role. The password is stored as a salted hash and never returned. " +
-                "409 if the username or email is already taken.")
+                "Admin-only. Creates an account with the User role; people register themselves with POST /api/auth/register. " +
+                "The password is stored as a salted hash and never returned. 409 if the username or email is already taken.")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
             .WithValidation<CreateUserRequest>()
             .Produces<UserDto>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPut("/{userId:int}", Update)
             .WithName("UpdateUser")
             .WithSummary("Update a user")
-            .WithDescription("Replaces username, email, bio and role. 409 if the new username or email is already taken.")
+            .WithDescription(
+                "The account owner or an admin. Replaces username, email and bio; role is optional and only admins may change it. " +
+                "409 if the new username or email is already taken.")
+            .RequireAuthorization()
             .WithValidation<UpdateUserRequest>()
             .Produces<UserDto>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapDelete("/{userId:int}", Delete)
             .WithName("DeleteUser")
             .WithSummary("Delete a user")
-            .WithDescription("Deletes the account together with all reviews it wrote. Returns 204 with no body.")
+            .WithDescription("The account owner or an admin. Deletes the account together with all reviews it wrote. Returns 204 with no body.")
+            .RequireAuthorization()
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return group;
     }
 
-    private static IQueryable<UserDto> Project(IQueryable<User> users) =>
-        users.Select(u => new UserDto(u.Id, u.Username, u.Email, u.Role, u.Bio, u.CreatedAt, u.Reviews.Count));
+    internal static IQueryable<UserDto> Project(IQueryable<User> users, bool showEmail) =>
+        users.Select(u => new UserDto(u.Id, u.Username, showEmail ? u.Email : null, u.Role, u.Bio, u.CreatedAt, u.Reviews.Count));
 
     private static UserDto WithLinks(UserDto user, HttpRequest request) =>
         user with { Links = ApiLinks.User(request, user.Id) };
 
     /// <summary>Returns a 409 result if the username or email belongs to another account.</summary>
-    private static async Task<IResult?> CheckUnique(GlazeAudioDbContext db, string username, string email, int? exceptUserId, CancellationToken ct)
+    internal static async Task<IResult?> CheckUnique(GlazeAudioDbContext db, string username, string email, int? exceptUserId, CancellationToken ct)
     {
         var lowerName = username.ToLower();
         var lowerEmail = email.ToLower();
@@ -106,14 +123,14 @@ public static class UserEndpoints
         }
 
         var total = await users.CountAsync(ct);
-        var items = await Project(users.OrderBy(u => u.Id).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct);
+        var items = await Project(users.OrderBy(u => u.Id).Skip((page - 1) * pageSize).Take(pageSize), showEmail: true).ToListAsync(ct);
 
         return Results.Ok(Paging.Create(request, items.Select(u => WithLinks(u, request)).ToList(), page, pageSize, total));
     }
 
-    private static async Task<IResult> GetById(int userId, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
+    private static async Task<IResult> GetById(int userId, ClaimsPrincipal principal, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
-        var user = await Project(db.Users.Where(u => u.Id == userId)).FirstOrDefaultAsync(ct);
+        var user = await Project(db.Users.Where(u => u.Id == userId), showEmail: principal.IsSelfOrAdmin(userId)).FirstOrDefaultAsync(ct);
         return user is null ? ApiProblems.NotFound("User", userId) : Results.Ok(WithLinks(user, request));
     }
 
@@ -183,10 +200,14 @@ public static class UserEndpoints
         return Results.CreatedAtRoute("GetUser", new { userId = user.Id }, WithLinks(dto, request));
     }
 
-    private static async Task<IResult> Update(int userId, UpdateUserRequest body, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
+    private static async Task<IResult> Update(int userId, UpdateUserRequest body, ClaimsPrincipal principal, GlazeAudioDbContext db, HttpRequest request, CancellationToken ct)
     {
         var user = await db.Users.FindAsync([userId], ct);
         if (user is null) return ApiProblems.NotFound("User", userId);
+        if (!principal.IsSelfOrAdmin(userId))
+            return ApiProblems.Forbidden("You can only edit your own account.");
+        if (body.Role is not null && body.Role != user.Role && !principal.IsAdmin())
+            return ApiProblems.Forbidden("Only admins can change roles.");
 
         var username = body.Username!.Trim();
         var email = body.Email!.Trim();
@@ -195,15 +216,20 @@ public static class UserEndpoints
         user.Username = username;
         user.Email = email;
         user.Bio = string.IsNullOrWhiteSpace(body.Bio) ? null : body.Bio.Trim();
-        user.Role = body.Role!;
+        if (body.Role is not null) user.Role = body.Role;
         await db.SaveChangesAsync(ct);
 
-        var dto = await Project(db.Users.Where(u => u.Id == userId)).FirstAsync(ct);
+        var dto = await Project(db.Users.Where(u => u.Id == userId), showEmail: true).FirstAsync(ct);
         return Results.Ok(WithLinks(dto, request));
     }
 
-    private static async Task<IResult> Delete(int userId, GlazeAudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> Delete(int userId, ClaimsPrincipal principal, GlazeAudioDbContext db, CancellationToken ct)
     {
+        if (!await db.Users.AnyAsync(u => u.Id == userId, ct))
+            return ApiProblems.NotFound("User", userId);
+        if (!principal.IsSelfOrAdmin(userId))
+            return ApiProblems.Forbidden("You can only delete your own account.");
+
         var deleted = await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync(ct);
         return deleted == 0 ? ApiProblems.NotFound("User", userId) : Results.NoContent();
     }

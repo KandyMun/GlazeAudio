@@ -1,16 +1,19 @@
 {
   "info": {
-    "_postman_id": "21e53172-0027-4157-b03e-5cd35c83616d",
+    "_postman_id": "bb6f7349-3fd5-45b0-bf8e-e696dad31cfd",
     "name": "GlazeAudio API",
-    "description": "Demonstrates all 15 GlazeAudio API methods (5 per resource: albums → songs → reviews), user accounts linked to their reviews, pagination, filtering, hypermedia links, the album overview, and the 400 / 404 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `postman collection run`). It creates its own user, album, song and review, then deletes them, so it can be re-run any number of times.",
+    "description": "Demonstrates JWT authentication (register, login, refresh, logout, roles in the token), all 15 GlazeAudio API methods (albums → songs → reviews), user accounts, pagination, filtering, hypermedia links, the album overview, and the 400 / 401 / 403 / 404 / 409 / 422 / 201 / 204 cases.\n\nRun the whole collection with the Runner (or `postman collection run`). It registers its own user and logs in as the seeded admin, creates an album, song and review, then deletes everything, so it can be re-run any number of times.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
   },
   "item": [
     {
-      "name": "0. Users",
+      "name": "0. Auth (JWT)",
       "item": [
         {
-          "name": "POST register user",
+          "name": "POST register (creates account + logs in)",
           "event": [
             {
               "listen": "prerequest",
@@ -30,10 +33,13 @@
                   "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
-                  "pm.test(\"Location header points to new user\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/users/\" + b.id));",
-                  "pm.test(\"Password is never returned\", () => { pm.expect(b).to.not.have.property(\"password\"); pm.expect(b).to.not.have.property(\"passwordHash\"); });",
-                  "pm.test(\"New accounts get the User role\", () => pm.expect(b.role).to.eql(\"User\"));",
-                  "pm.collectionVariables.set(\"userId\", b.id);"
+                  "pm.test(\"Returns access + refresh tokens\", () => { pm.expect(b.tokenType).to.eql(\"Bearer\"); pm.expect(b.accessToken.split(\".\")).to.have.lengthOf(3); pm.expect(b.refreshToken).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"New accounts get the User role\", () => pm.expect(b.user.role).to.eql(\"User\"));",
+                  "pm.test(\"Password is never returned\", () => { pm.expect(b.user).to.not.have.property(\"password\"); pm.expect(b.user).to.not.have.property(\"passwordHash\"); });",
+                  "pm.test(\"Location header points to the new user\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/users/\" + b.user.id));",
+                  "pm.collectionVariables.set(\"userId\", b.user.id);",
+                  "pm.collectionVariables.set(\"userToken\", b.accessToken);",
+                  "pm.collectionVariables.set(\"userRefreshToken\", b.refreshToken);"
                 ]
               }
             }
@@ -47,14 +53,18 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/users",
+              "raw": "{{baseUrl}}/api/auth/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "users"
+                "auth",
+                "register"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             },
             "body": {
               "mode": "raw",
@@ -68,7 +78,7 @@
           }
         },
         {
-          "name": "GET all users",
+          "name": "POST login as admin",
           "event": [
             {
               "listen": "test",
@@ -78,8 +88,376 @@
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
-                  "pm.test(\"Returns a page of users\", () => { pm.expect(b.items).to.not.be.empty; pm.expect(b).to.include.keys(\"page\",\"pageSize\",\"totalCount\",\"totalPages\",\"_links\"); });",
-                  "pm.test(\"Each user links to their reviews\", () => pm.expect(b.items[0]._links.reviews.href).to.include(\"/reviews\"));"
+                  "const decode = t => JSON.parse(atob(t.split(\".\")[1].replace(/-/g, \"+\").replace(/_/g, \"/\")));",
+                  "const claims = decode(b.accessToken);",
+                  "pm.test(\"The role is stored inside the token\", () => pm.expect(claims.role).to.eql(\"Admin\"));",
+                  "pm.test(\"Token has user id, name and expiry\", () => { pm.expect(claims.sub).to.eql(String(b.user.id)); pm.expect(claims.name).to.eql(\"admin\"); pm.expect(claims.exp * 1000).to.be.above(Date.now()); });",
+                  "pm.collectionVariables.set(\"adminToken\", b.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"admin\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The admin account is seeded. Set adminPassword in the environment if you changed it."
+          }
+        },
+        {
+          "name": "401 - wrong password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Problem details\", () => pm.expect(pm.response.json().title).to.eql(\"Invalid login or password.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"admin\",\n  \"password\": \"definitely-wrong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET me (current user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Token identifies the registered user\", () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get(\"testUsername\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST refresh (rotate tokens)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"New refresh token issued\", () => pm.expect(b.refreshToken).to.not.eql(pm.collectionVariables.get(\"userRefreshToken\")));",
+                  "pm.collectionVariables.set(\"oldRefreshToken\", pm.collectionVariables.get(\"userRefreshToken\"));",
+                  "pm.collectionVariables.set(\"userToken\", b.accessToken);",
+                  "pm.collectionVariables.set(\"userRefreshToken\", b.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{userRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "401 - used refresh token is rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{oldRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Refresh tokens are single-use. Reusing one also revokes the user's other refresh tokens (theft protection); the access token stays valid until it expires."
+          }
+        },
+        {
+          "name": "POST login as the test user (by email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Same account\", () => pm.expect(b.user.id).to.eql(Number(pm.collectionVariables.get(\"userId\"))));",
+                  "pm.collectionVariables.set(\"userToken\", b.accessToken);",
+                  "pm.collectionVariables.set(\"userRefreshToken\", b.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{testUsername}}@example.com\",\n  \"password\": \"Listening123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The reuse above logged this user out everywhere, so log in again (login accepts a username or an email)."
+          }
+        },
+        {
+          "name": "401 - no token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Asks for a bearer token\", () => pm.expect(pm.response.headers.get(\"WWW-Authenticate\")).to.include(\"Bearer\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "401 - invalid token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Says the token is invalid\", () => pm.expect(pm.response.json().title).to.eql(\"Invalid or expired token.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{brokenToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Users",
+      "item": [
+        {
+          "name": "GET all users (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"Returns a page of users\", () => { pm.expect(b.items).to.not.be.empty; pm.expect(b).to.include.keys(\"page\",\"pageSize\",\"totalCount\",\"totalPages\",\"_links\"); });"
                 ]
               }
             }
@@ -96,11 +474,60 @@
                 "api",
                 "users"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
-          "name": "GET one user",
+          "name": "403 - users list as a regular user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one user (own profile shows email)",
           "event": [
             {
               "listen": "test",
@@ -108,8 +535,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Correct user\", () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get(\"testUsername\")));"
+                  "pm.test(\"Email visible to the owner\", () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get(\"testUsername\") + \"@example.com\"));"
                 ]
               }
             }
@@ -127,11 +553,21 @@
                 "users",
                 "{{userId}}"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
-          "name": "PUT update user",
+          "name": "GET one user (public, email hidden)",
           "event": [
             {
               "listen": "test",
@@ -139,7 +575,39 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
+                  "pm.test(\"Email hidden from others\", () => pm.expect(pm.response.json().email).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "PUT update own profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Bio updated\", () => pm.expect(pm.response.json().bio).to.eql(\"Mostly reviews Radiohead.\"));"
                 ]
               }
@@ -164,9 +632,73 @@
                 "{{userId}}"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testUsername}}@example.com\",\n  \"bio\": \"Mostly reviews Radiohead.\",\n  \"role\": \"User\"\n}",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testUsername}}@example.com\",\n  \"bio\": \"Mostly reviews Radiohead.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "403 - user tries to make themself admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Explains why\", () => pm.expect(pm.response.json().detail).to.eql(\"Only admins can change roles.\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testUsername}}@example.com\",\n  \"role\": \"Admin\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -178,10 +710,10 @@
       ]
     },
     {
-      "name": "1. Albums",
+      "name": "2. Albums",
       "item": [
         {
-          "name": "GET all albums",
+          "name": "GET all albums (public)",
           "event": [
             {
               "listen": "test",
@@ -192,7 +724,7 @@
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
                   "pm.test(\"Returns a page of seeded albums\", () => { pm.expect(b.items).to.be.an(\"array\").that.is.not.empty; pm.expect(b).to.include.keys(\"page\",\"pageSize\",\"totalCount\",\"totalPages\",\"_links\"); });",
-                  "pm.test(\"Each album has fields and hypermedia links\", () => { pm.expect(b.items[0]).to.include.keys(\"id\",\"title\",\"artist\",\"releaseYear\",\"genre\",\"songCount\",\"reviewCount\",\"averageRating\",\"_links\"); pm.expect(b.items[0]._links).to.include.keys(\"self\",\"update\",\"delete\",\"songs\",\"overview\"); });"
+                  "pm.test(\"Each album has hypermedia links\", () => pm.expect(b.items[0]._links).to.include.keys(\"self\",\"update\",\"delete\",\"songs\",\"overview\"));"
                 ]
               }
             }
@@ -209,11 +741,111 @@
                 "api",
                 "albums"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "POST create album",
+          "name": "401 - create album without a token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Alternative Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "403 - create album as a regular user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Alternative Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST create album (admin)",
           "event": [
             {
               "listen": "test",
@@ -224,8 +856,6 @@
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
                   "pm.test(\"Location header points to new album\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/albums/\" + b.id));",
-                  "pm.test(\"Body echoes the album\", () => pm.expect(b.title).to.eql(\"In Rainbows\"));",
-                  "pm.test(\"Response has hypermedia links\", () => pm.expect(b._links.songs.href).to.include(\"/api/albums/\" + b.id + \"/songs\"));",
                   "pm.collectionVariables.set(\"albumId\", b.id);",
                   "pm.collectionVariables.set(\"albumSongsUrl\", b._links.songs.href);"
                 ]
@@ -250,6 +880,16 @@
                 "albums"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Alternative Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
@@ -270,7 +910,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Correct album\", () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"albumId\"))));"
                 ]
               }
@@ -289,11 +928,14 @@
                 "albums",
                 "{{albumId}}"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "PUT update album",
+          "name": "PUT update album (admin)",
           "event": [
             {
               "listen": "test",
@@ -301,7 +943,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Genre updated\", () => pm.expect(pm.response.json().genre).to.eql(\"Art Rock\"));"
                 ]
               }
@@ -326,6 +967,16 @@
                 "{{albumId}}"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"In Rainbows\",\n  \"artist\": \"Radiohead\",\n  \"releaseYear\": 2007,\n  \"genre\": \"Art Rock\",\n  \"coverUrl\": \"https://example.com/covers/in-rainbows.jpg\"\n}",
@@ -340,10 +991,10 @@
       ]
     },
     {
-      "name": "2. Songs",
+      "name": "3. Songs",
       "item": [
         {
-          "name": "POST create song",
+          "name": "POST create song (admin)",
           "event": [
             {
               "listen": "test",
@@ -352,9 +1003,7 @@
                 "exec": [
                   "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Location header set\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/songs/\" + b.id));",
-                  "pm.collectionVariables.set(\"songId\", b.id);"
+                  "pm.collectionVariables.set(\"songId\", pm.response.json().id);"
                 ]
               }
             }
@@ -379,6 +1028,16 @@
                 "songs"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Weird Fishes/Arpeggi\",\n  \"trackNumber\": 4,\n  \"durationSeconds\": 318\n}",
@@ -399,7 +1058,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Contains the new song\", () => pm.expect(pm.response.json().items.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));"
                 ]
               }
@@ -419,6 +1077,9 @@
                 "{{albumId}}",
                 "songs"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -430,8 +1091,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -451,11 +1111,14 @@
                 "songs",
                 "{{songId}}"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "PUT update song",
+          "name": "PUT update song (admin)",
           "event": [
             {
               "listen": "test",
@@ -463,7 +1126,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Title updated\", () => pm.expect(pm.response.json().title).to.eql(\"Weird Fishes / Arpeggi\"));"
                 ]
               }
@@ -490,6 +1152,16 @@
                 "{{songId}}"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Weird Fishes / Arpeggi\",\n  \"trackNumber\": 4,\n  \"durationSeconds\": 318\n}",
@@ -504,10 +1176,59 @@
       ]
     },
     {
-      "name": "3. Reviews",
+      "name": "4. Reviews",
       "item": [
         {
-          "name": "POST create review",
+          "name": "401 - review without logging in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}",
+                "reviews"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST create review (logged-in user)",
           "event": [
             {
               "listen": "test",
@@ -517,8 +1238,8 @@
                   "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
                   "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
+                  "pm.test(\"Author comes from the token\", () => { pm.expect(b.userId).to.eql(Number(pm.collectionVariables.get(\"userId\"))); pm.expect(b.username).to.eql(pm.collectionVariables.get(\"testUsername\")); });",
                   "pm.test(\"Overall rating is the average of 4 aspects\", () => pm.expect(b.overallRating).to.eql(4.5));",
-                  "pm.test(\"Linked to its author\", () => { pm.expect(b.userId).to.eql(Number(pm.collectionVariables.get(\"userId\"))); pm.expect(b.username).to.eql(pm.collectionVariables.get(\"testUsername\")); pm.expect(b._links.author.href).to.include(\"/api/users/\" + b.userId); });",
                   "pm.collectionVariables.set(\"reviewId\", b.id);"
                 ]
               }
@@ -546,9 +1267,19 @@
                 "reviews"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "raw": "{\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -566,8 +1297,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Has one review\", () => { const b = pm.response.json(); pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.totalCount).to.eql(1); });"
+                  "pm.test(\"Has one review\", () => pm.expect(pm.response.json().totalCount).to.eql(1));"
                 ]
               }
             }
@@ -588,6 +1318,9 @@
                 "{{songId}}",
                 "reviews"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -599,8 +1332,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));"
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -622,11 +1354,14 @@
                 "reviews",
                 "{{reviewId}}"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "PUT update review",
+          "name": "PUT edit own review",
           "event": [
             {
               "listen": "test",
@@ -634,9 +1369,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Rating and comment updated\", () => { pm.expect(b.lyricsRating).to.eql(5); pm.expect(b.updatedAt).to.not.be.null; });"
+                  "pm.test(\"Updated\", () => { const b = pm.response.json(); pm.expect(b.lyricsRating).to.eql(5); pm.expect(b.updatedAt).to.not.be.null; });"
                 ]
               }
             }
@@ -664,6 +1397,16 @@
                 "{{reviewId}}"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"lyricsRating\": 5,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"Changed my mind: the lyrics hold up too. One of the best songs on the album.\"\n}",
@@ -678,7 +1421,7 @@
       ]
     },
     {
-      "name": "4. Paging, filtering, hypermedia, overview",
+      "name": "5. Paging, filtering, hypermedia, overview",
       "item": [
         {
           "name": "GET API root (hypermedia entry point)",
@@ -689,8 +1432,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "pm.test(\"Links to the albums collection\", () => pm.expect(pm.response.json()._links.albums.href).to.include(\"/api/albums\"));"
+                  "pm.test(\"Links to albums and login\", () => { const l = pm.response.json()._links; pm.expect(l.albums.href).to.include(\"/api/albums\"); pm.expect(l.login.method).to.eql(\"POST\"); });"
                 ]
               }
             }
@@ -707,7 +1449,9 @@
                 "api"
               ]
             },
-            "description": "A client can start here and discover the rest of the API by following _links."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -719,9 +1463,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
-                  "pm.test(\"Page metadata\", () => { pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(2); pm.expect(b.items.length).to.be.at.most(2); pm.expect(b.totalPages).to.eql(Math.ceil(b.totalCount / 2)); });",
+                  "pm.test(\"Page metadata\", () => { pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(2); pm.expect(b.totalPages).to.eql(Math.ceil(b.totalCount / 2)); });",
                   "pm.test(\"Has next link, no prev link\", () => { pm.expect(b._links).to.have.property(\"next\"); pm.expect(b._links).to.not.have.property(\"prev\"); });",
                   "pm.collectionVariables.set(\"nextPageUrl\", b._links.next.href);"
                 ]
@@ -750,6 +1493,9 @@
                   "value": "2"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -762,8 +1508,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Now on page 2 with a prev link\", () => { pm.expect(b.page).to.eql(2); pm.expect(b._links).to.have.property(\"prev\"); });"
+                  "pm.test(\"Now on page 2 with a prev link\", () => { const b = pm.response.json(); pm.expect(b.page).to.eql(2); pm.expect(b._links).to.have.property(\"prev\"); });"
                 ]
               }
             }
@@ -777,7 +1522,9 @@
                 "{{nextPageUrl}}"
               ]
             },
-            "description": "The URL comes from the previous response's _links.next - the client never builds it itself."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -789,9 +1536,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Every album matches the filter\", () => { pm.expect(b.items).to.not.be.empty; b.items.forEach(a => { pm.expect(a.genre.toLowerCase()).to.include(\"rock\"); pm.expect(a.releaseYear).to.be.at.least(1990); }); });",
-                  "pm.test(\"Filters are kept in paging links\", () => pm.expect(b._links.self.href).to.include(\"genre=rock\"));"
+                  "pm.test(\"Every album matches\", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(a => { pm.expect(a.genre.toLowerCase()).to.include(\"rock\"); pm.expect(a.releaseYear).to.be.at.least(1990); }); });"
                 ]
               }
             }
@@ -818,6 +1563,9 @@
                   "value": "1990"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -853,6 +1601,9 @@
                   "value": "rainbows"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -865,9 +1616,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Lists the album songs\", () => pm.expect(b.items.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));",
-                  "pm.test(\"Each song links to its reviews\", () => pm.expect(b.items[0]._links.reviews.href).to.include(\"/reviews\"));"
+                  "pm.test(\"Lists the album songs\", () => pm.expect(pm.response.json().items.map(s => s.id)).to.include(Number(pm.collectionVariables.get(\"songId\"))));"
                 ]
               }
             }
@@ -881,7 +1630,9 @@
                 "{{albumSongsUrl}}"
               ]
             },
-            "description": "URL taken from _links.songs of the POST create album response."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -918,6 +1669,9 @@
                   "value": "300"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -961,11 +1715,14 @@
                   "value": "4"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "Filter - users by role",
+          "name": "Filter - users by role (admin)",
           "event": [
             {
               "listen": "test",
@@ -973,7 +1730,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Only admins\", () => { const b = pm.response.json(); pm.expect(b.items).to.not.be.empty; b.items.forEach(u => pm.expect(u.role).to.eql(\"Admin\")); });"
+                  "pm.test(\"Only admins\", () => pm.response.json().items.forEach(u => pm.expect(u.role).to.eql(\"Admin\")));"
                 ]
               }
             }
@@ -996,6 +1753,16 @@
                   "value": "admin"
                 }
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -1008,10 +1775,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
-                  "const b = pm.response.json();",
-                  "pm.test(\"Lists the review with its song and album\", () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].albumTitle).to.eql(\"In Rainbows\"); pm.expect(b.items[0].songTitle).to.eql(\"Weird Fishes / Arpeggi\"); });",
-                  "pm.test(\"Links back to the review\", () => pm.expect(b.items[0]._links.self.href).to.include(\"/reviews/\" + pm.collectionVariables.get(\"reviewId\")));"
+                  "pm.test(\"Lists the review with its song and album\", () => { const b = pm.response.json(); pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].albumTitle).to.eql(\"In Rainbows\"); });"
                 ]
               }
             }
@@ -1031,7 +1795,9 @@
                 "reviews"
               ]
             },
-            "description": "A user's profile view of their reviews, built from User, Review, Song and Album."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -1043,11 +1809,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "const b = pm.response.json();",
                   "pm.test(\"Built from 3 entities\", () => { pm.expect(b.album.id).to.eql(Number(pm.collectionVariables.get(\"albumId\"))); pm.expect(b.songs).to.have.lengthOf(1); pm.expect(b.latestReviews).to.have.lengthOf(1); });",
-                  "pm.test(\"Has rating statistics\", () => { pm.expect(b.stats.reviewCount).to.eql(1); pm.expect(b.stats.averageRating).to.eql(4.75); pm.expect(b.stats.aspectAverages).to.include.keys(\"lyrics\",\"melody\",\"mood\",\"expressiveness\"); });",
-                  "pm.test(\"Top-rated song is the reviewed song\", () => pm.expect(b.topRatedSong.id).to.eql(Number(pm.collectionVariables.get(\"songId\"))));"
+                  "pm.test(\"Has rating statistics\", () => { pm.expect(b.stats.averageRating).to.eql(4.75); pm.expect(b.stats.aspectAverages).to.include.keys(\"lyrics\",\"melody\",\"mood\",\"expressiveness\"); });"
                 ]
               }
             }
@@ -1067,7 +1831,9 @@
                 "overview"
               ]
             },
-            "description": "Dashboard-style resource assembled from Album, Song and Review."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -1106,13 +1872,16 @@
                   "value": "500"
                 }
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         }
       ]
     },
     {
-      "name": "5. Error cases (400 / 404 / 422)",
+      "name": "6. Error cases (400 / 404 / 409 / 422)",
       "item": [
         {
           "name": "404 - album does not exist",
@@ -1142,6 +1911,9 @@
                 "albums",
                 "999999"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -1153,8 +1925,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));",
-                  "pm.test(\"Hierarchy is enforced\", () => pm.expect(pm.response.json().title).to.eql(\"Song not found.\"));"
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
                 ]
               }
             }
@@ -1175,7 +1946,9 @@
                 "{{songId}}"
               ]
             },
-            "description": "The song exists, but belongs to a different album, so the nested URL is invalid."
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -1208,6 +1981,9 @@
                 "reviews",
                 "999999"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -1243,6 +2019,16 @@
                 "{{albumId}}",
                 "songs",
                 "999999"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -1286,6 +2072,16 @@
               "path": [
                 "api",
                 "albums"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -1332,6 +2128,16 @@
                 "songs"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{ \"title\": \"Oops\", \"trackNumber\": \"first\", \"durationSeconds\": 100 }",
@@ -1352,7 +2158,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Lists every invalid field\", () => pm.expect(pm.response.json().errors).to.have.keys(\"title\", \"releaseYear\"));"
                 ]
               }
@@ -1376,6 +2181,16 @@
                 "albums"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"\",\n  \"artist\": \"Nobody\",\n  \"releaseYear\": 1500,\n  \"genre\": \"Pop\"\n}",
@@ -1396,7 +2211,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));",
-                  "pm.test(\"Content-Type is JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/application\\/(problem\\+)?json/));",
                   "pm.test(\"Explains the conflict\", () => pm.expect(pm.response.json().title).to.eql(\"Username already taken.\"));"
                 ]
               }
@@ -1411,14 +2225,18 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/users",
+              "raw": "{{baseUrl}}/api/auth/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "users"
+                "auth",
+                "register"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             },
             "body": {
               "mode": "raw",
@@ -1432,7 +2250,7 @@
           }
         },
         {
-          "name": "422 - invalid user fields",
+          "name": "422 - invalid registration fields",
           "event": [
             {
               "listen": "test",
@@ -1454,65 +2272,22 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/users",
+              "raw": "{{baseUrl}}/api/auth/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "users"
+                "auth",
+                "register"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"username\": \"no spaces allowed\",\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "422 - review by a user that does not exist",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 422 Unprocessable Entity\", () => pm.response.to.have.status(422));",
-                  "pm.test(\"userId reported\", () => pm.expect(pm.response.json().errors).to.have.property(\"userId\"));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}/reviews",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "albums",
-                "{{albumId}}",
-                "songs",
-                "{{songId}}",
-                "reviews"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": 999999,\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1557,9 +2332,19 @@
                 "reviews"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "raw": "{\n  \"lyricsRating\": 4,\n  \"melodyRating\": 5,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1604,9 +2389,19 @@
                 "reviews"
               ]
             },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": {{userId}},\n  \"lyricsRating\": 4,\n  \"melodyRating\": 9,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
+              "raw": "{\n  \"lyricsRating\": 4,\n  \"melodyRating\": 9,\n  \"moodRating\": 5,\n  \"expressivenessRating\": 4,\n  \"comment\": \"The layered guitars build into something huge by the end.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1618,10 +2413,51 @@
       ]
     },
     {
-      "name": "6. Delete (204)",
+      "name": "7. Delete, logout (204)",
       "item": [
         {
-          "name": "DELETE review",
+          "name": "403 - admin-only delete as a regular user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE own review",
           "event": [
             {
               "listen": "test",
@@ -1651,11 +2487,21 @@
                 "reviews",
                 "{{reviewId}}"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
-          "name": "DELETE song",
+          "name": "DELETE song (admin)",
           "event": [
             {
               "listen": "test",
@@ -1682,11 +2528,21 @@
                 "songs",
                 "{{songId}}"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
-          "name": "DELETE album",
+          "name": "DELETE album (admin)",
           "event": [
             {
               "listen": "test",
@@ -1710,6 +2566,16 @@
                 "api",
                 "albums",
                 "{{albumId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -1740,6 +2606,9 @@
                 "albums",
                 "{{albumId}}"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
@@ -1769,11 +2638,113 @@
                 "albums",
                 "{{albumId}}"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
-          "name": "DELETE user",
+          "name": "POST logout (revoke refresh token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{userRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "401 - refresh after logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{userRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE own account",
           "event": [
             {
               "listen": "test",
@@ -1797,6 +2768,16 @@
                 "api",
                 "users",
                 "{{userId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -1827,6 +2808,9 @@
                 "users",
                 "{{userId}}"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         }
@@ -1839,6 +2823,38 @@
       "value": "http://localhost:5080"
     },
     {
+      "key": "adminPassword",
+      "value": "GlazeAudio123!"
+    },
+    {
+      "key": "brokenToken",
+      "value": "not.a.validtoken"
+    },
+    {
+      "key": "testUsername",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "userToken",
+      "value": ""
+    },
+    {
+      "key": "userRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "oldRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
       "key": "albumId",
       "value": ""
     },
@@ -1848,14 +2864,6 @@
     },
     {
       "key": "reviewId",
-      "value": ""
-    },
-    {
-      "key": "userId",
-      "value": ""
-    },
-    {
-      "key": "testUsername",
       "value": ""
     },
     {

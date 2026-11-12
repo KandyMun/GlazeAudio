@@ -16,6 +16,7 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public List<Review> Reviews { get; set; } = [];
+    public List<RefreshToken> RefreshTokens { get; set; } = [];
 }
 
 public static class UserRoles

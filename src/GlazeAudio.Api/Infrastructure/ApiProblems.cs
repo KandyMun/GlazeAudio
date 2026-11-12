@@ -18,4 +18,10 @@ public static class ApiProblems
             statusCode: StatusCodes.Status422UnprocessableEntity,
             title: "One or more validation errors occurred.",
             type: "https://tools.ietf.org/html/rfc4918#section-11.2");
+
+    public static IResult Forbidden(string detail) =>
+        Results.Problem(title: "Forbidden.", detail: detail, statusCode: StatusCodes.Status403Forbidden);
+
+    public static IResult Unauthorized(string title, string detail) =>
+        Results.Problem(title: title, detail: detail, statusCode: StatusCodes.Status401Unauthorized);
 }

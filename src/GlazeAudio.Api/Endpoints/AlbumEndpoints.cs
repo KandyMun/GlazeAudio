@@ -1,6 +1,7 @@
 using GlazeAudio.Api.Contracts;
 using GlazeAudio.Api.Data;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Infrastructure.Auth;
 using GlazeAudio.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,14 +40,20 @@ public static class AlbumEndpoints
 
         group.MapPost("/", Create)
             .WithName("CreateAlbum")
-            .WithSummary("Create an album")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Create an album (admin)")
             .WithDescription("Creates a new album. Returns 201 with a Location header that points to the new album.")
             .WithValidation<AlbumRequest>()
             .Produces<AlbumDto>(StatusCodes.Status201Created);
 
         group.MapPut("/{albumId:int}", Update)
             .WithName("UpdateAlbum")
-            .WithSummary("Update an album")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Update an album (admin)")
             .WithDescription("Replaces all editable fields of the album.")
             .WithValidation<AlbumRequest>()
             .Produces<AlbumDto>()
@@ -54,7 +61,10 @@ public static class AlbumEndpoints
 
         group.MapDelete("/{albumId:int}", Delete)
             .WithName("DeleteAlbum")
-            .WithSummary("Delete an album")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Delete an album (admin)")
             .WithDescription("Deletes the album together with all of its songs and their reviews. Returns 204 with no body.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);

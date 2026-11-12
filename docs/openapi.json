@@ -2,7 +2,7 @@
     "openapi": "3.0.1",
     "info": {
         "title": "GlazeAudio API",
-        "description": "REST API for GlazeAudio \u2013 a platform for reviewing music. Resources are hierarchical: albums \u2192 songs \u2192 reviews. Reviews are written by users.",
+        "description": "REST API for GlazeAudio – a platform for reviewing music. Resources are hierarchical: albums → songs → reviews. Reviews are written by users.",
         "version": "v1"
     },
     "servers": [
@@ -53,7 +53,7 @@
                     {
                         "name": "pageSize",
                         "in": "query",
-                        "description": "Items per page, 1\u201350. Default 10.",
+                        "description": "Items per page, 1–50. Default 10.",
                         "schema": {
                             "type": "integer",
                             "format": "int32"
@@ -129,7 +129,7 @@
                 "tags": [
                     "Albums"
                 ],
-                "summary": "Create an album",
+                "summary": "Create an album (admin)",
                 "description": "Creates a new album. Returns 201 with a Location header that points to the new album.",
                 "operationId": "CreateAlbum",
                 "requestBody": {
@@ -143,6 +143,26 @@
                     "required": true
                 },
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "400": {
                         "description": "Bad Request",
                         "content": {
@@ -173,7 +193,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/albums/{albumId}": {
@@ -221,7 +246,7 @@
                 "tags": [
                     "Albums"
                 ],
-                "summary": "Update an album",
+                "summary": "Update an album (admin)",
                 "description": "Replaces all editable fields of the album.",
                 "operationId": "UpdateAlbum",
                 "parameters": [
@@ -246,6 +271,26 @@
                     "required": true
                 },
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "400": {
                         "description": "Bad Request",
                         "content": {
@@ -286,13 +331,18 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
                     "Albums"
                 ],
-                "summary": "Delete an album",
+                "summary": "Delete an album (admin)",
                 "description": "Deletes the album together with all of its songs and their reviews. Returns 204 with no body.",
                 "operationId": "DeleteAlbum",
                 "parameters": [
@@ -307,6 +357,26 @@
                     }
                 ],
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "204": {
                         "description": "No Content"
                     },
@@ -320,7 +390,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/albums/{albumId}/overview": {
@@ -396,7 +471,7 @@
                     {
                         "name": "pageSize",
                         "in": "query",
-                        "description": "Items per page, 1\u201350. Default 10.",
+                        "description": "Items per page, 1–50. Default 10.",
                         "schema": {
                             "type": "integer",
                             "format": "int32"
@@ -466,7 +541,7 @@
                 "tags": [
                     "Songs"
                 ],
-                "summary": "Add a song to an album",
+                "summary": "Add a song to an album (admin)",
                 "operationId": "CreateSong",
                 "parameters": [
                     {
@@ -490,6 +565,26 @@
                     "required": true
                 },
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "400": {
                         "description": "Bad Request",
                         "content": {
@@ -530,7 +625,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/albums/{albumId}/songs/{songId}": {
@@ -588,7 +688,7 @@
                 "tags": [
                     "Songs"
                 ],
-                "summary": "Update a song",
+                "summary": "Update a song (admin)",
                 "operationId": "UpdateSong",
                 "parameters": [
                     {
@@ -621,6 +721,26 @@
                     "required": true
                 },
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "400": {
                         "description": "Bad Request",
                         "content": {
@@ -661,13 +781,18 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
                     "Songs"
                 ],
-                "summary": "Delete a song",
+                "summary": "Delete a song (admin)",
                 "description": "Deletes the song and all of its reviews. Returns 204 with no body.",
                 "operationId": "DeleteSong",
                 "parameters": [
@@ -691,6 +816,26 @@
                     }
                 ],
                 "responses": {
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "204": {
                         "description": "No Content"
                     },
@@ -704,7 +849,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/albums/{albumId}/songs/{songId}/reviews": {
@@ -746,7 +896,7 @@
                     {
                         "name": "pageSize",
                         "in": "query",
-                        "description": "Items per page, 1\u201350. Default 10.",
+                        "description": "Items per page, 1–50. Default 10.",
                         "schema": {
                             "type": "integer",
                             "format": "int32"
@@ -772,7 +922,7 @@
                     {
                         "name": "minRating",
                         "in": "query",
-                        "description": "Only reviews whose overall rating (average of the 4 aspects) is at least this value, 0\u20135.",
+                        "description": "Only reviews whose overall rating (average of the 4 aspects) is at least this value, 0–5.",
                         "schema": {
                             "type": "number",
                             "format": "double"
@@ -781,7 +931,7 @@
                     {
                         "name": "maxRating",
                         "in": "query",
-                        "description": "Only reviews whose overall rating is at most this value, 0\u20135.",
+                        "description": "Only reviews whose overall rating is at most this value, 0–5.",
                         "schema": {
                             "type": "number",
                             "format": "double"
@@ -826,7 +976,7 @@
                     "Reviews"
                 ],
                 "summary": "Review a song",
-                "description": "Each aspect (lyrics, melody, mood, expressiveness) is rated 0\u20135. The author is given as userId (until authentication is added). 422 if a rating is out of range or the user does not exist; 409 if this user has already reviewed the song.",
+                "description": "Logged-in users. Each aspect (lyrics, melody, mood, expressiveness) is rated 0–5; the author is the logged-in user. 422 if a rating is out of range; 409 if you have already reviewed the song.",
                 "operationId": "CreateReview",
                 "parameters": [
                     {
@@ -889,6 +1039,16 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "content": {
@@ -909,7 +1069,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/albums/{albumId}/songs/{songId}/reviews/{reviewId}": {
@@ -976,7 +1141,7 @@
                     "Reviews"
                 ],
                 "summary": "Edit a review",
-                "description": "Replaces the ratings and comment. The author cannot be changed.",
+                "description": "The review's author or an admin. Replaces the ratings and comment; the author cannot be changed.",
                 "operationId": "UpdateReview",
                 "parameters": [
                     {
@@ -1048,6 +1213,26 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "content": {
@@ -1058,14 +1243,19 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
                     "Reviews"
                 ],
                 "summary": "Delete a review",
-                "description": "Used by administrators to remove harmful reviews. Returns 204 with no body.",
+                "description": "The review's author, or an admin removing a harmful review. Returns 204 with no body.",
                 "operationId": "DeleteReview",
                 "parameters": [
                     {
@@ -1100,6 +1290,26 @@
                     "204": {
                         "description": "No Content"
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "content": {
@@ -1110,7 +1320,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/users": {
@@ -1134,7 +1349,7 @@
                     {
                         "name": "pageSize",
                         "in": "query",
-                        "description": "Items per page, 1\u201350. Default 10.",
+                        "description": "Items per page, 1–50. Default 10.",
                         "schema": {
                             "type": "integer",
                             "format": "int32"
@@ -1177,15 +1392,40 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
                     "Users"
                 ],
-                "summary": "Register a user",
-                "description": "Creates an account with the User role. The password is stored as a salted hash and never returned. 409 if the username or email is already taken.",
+                "summary": "Create a user (admin)",
+                "description": "Admin-only. Creates an account with the User role; people register themselves with POST /api/auth/register. The password is stored as a salted hash and never returned. 409 if the username or email is already taken.",
                 "operationId": "CreateUser",
                 "requestBody": {
                     "content": {
@@ -1228,6 +1468,26 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "409": {
                         "description": "Conflict",
                         "content": {
@@ -1238,7 +1498,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/users/{userId}": {
@@ -1247,6 +1512,7 @@
                     "Users"
                 ],
                 "summary": "Get one user",
+                "description": "Public profile. The email is included only for the user themself and admins.",
                 "operationId": "GetUser",
                 "parameters": [
                     {
@@ -1287,7 +1553,7 @@
                     "Users"
                 ],
                 "summary": "Update a user",
-                "description": "Replaces username, email, bio and role. 409 if the new username or email is already taken.",
+                "description": "The account owner or an admin. Replaces username, email and bio; role is optional and only admins may change it. 409 if the new username or email is already taken.",
                 "operationId": "UpdateUser",
                 "parameters": [
                     {
@@ -1341,6 +1607,26 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "content": {
@@ -1361,14 +1647,19 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Delete a user",
-                "description": "Deletes the account together with all reviews it wrote. Returns 204 with no body.",
+                "description": "The account owner or an admin. Deletes the account together with all reviews it wrote. Returns 204 with no body.",
                 "operationId": "DeleteUser",
                 "parameters": [
                     {
@@ -1385,6 +1676,26 @@
                     "204": {
                         "description": "No Content"
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "content": {
@@ -1395,7 +1706,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         },
         "/api/users/{userId}/reviews": {
@@ -1428,7 +1744,7 @@
                     {
                         "name": "pageSize",
                         "in": "query",
-                        "description": "Items per page, 1\u201350. Default 10.",
+                        "description": "Items per page, 1–50. Default 10.",
                         "schema": {
                             "type": "integer",
                             "format": "int32"
@@ -1437,7 +1753,7 @@
                     {
                         "name": "minRating",
                         "in": "query",
-                        "description": "Only reviews whose overall rating is at least this value, 0\u20135.",
+                        "description": "Only reviews whose overall rating is at least this value, 0–5.",
                         "schema": {
                             "type": "number",
                             "format": "double"
@@ -1476,6 +1792,333 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Create an account and log in",
+                "description": "Creates an account with the User role and returns tokens, so the client is logged in right away. 409 if the username or email is taken.",
+                "operationId": "Register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateUserRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log in with username (or email) and password",
+                "description": "Returns an access token (valid 15 minutes, contains the user's id, name and role) and a refresh token (valid 7 days). 401 for a wrong login or password.",
+                "operationId": "Login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get a new access token",
+                "description": "Exchanges a valid refresh token for a new access token and a new refresh token (the old one stops working). 401 if the refresh token is invalid, expired or revoked.",
+                "operationId": "RefreshToken",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RefreshRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log out (revoke a refresh token)",
+                "description": "Revokes the refresh token so it can no longer be used. Returns 204 even if the token was already invalid.",
+                "operationId": "Logout",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RefreshRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "The logged-in user",
+                "operationId": "GetCurrentUser",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserDto"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/password": {
+            "put": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Change your password",
+                "description": "Logs out all other sessions (revokes every refresh token). 422 if the current password is wrong.",
+                "operationId": "ChangePassword",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ]
             }
         }
     },
@@ -1733,9 +2376,62 @@
                 },
                 "nullable": true
             },
+            "AuthResponse": {
+                "required": [
+                    "accessToken",
+                    "accessTokenExpiresAt",
+                    "refreshToken",
+                    "refreshTokenExpiresAt",
+                    "user"
+                ],
+                "type": "object",
+                "properties": {
+                    "accessToken": {
+                        "type": "string"
+                    },
+                    "accessTokenExpiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "refreshToken": {
+                        "type": "string"
+                    },
+                    "refreshTokenExpiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/UserDto"
+                    },
+                    "tokenType": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "ChangePasswordRequest": {
+                "required": [
+                    "currentPassword",
+                    "newPassword"
+                ],
+                "type": "object",
+                "properties": {
+                    "currentPassword": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "newPassword": {
+                        "maxLength": 100,
+                        "minLength": 8,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
             "CreateReviewRequest": {
                 "required": [
-                    "userId",
                     "lyricsRating",
                     "melodyRating",
                     "moodRating",
@@ -1744,13 +2440,6 @@
                 ],
                 "type": "object",
                 "properties": {
-                    "userId": {
-                        "maximum": 2147483647,
-                        "minimum": 1,
-                        "type": "integer",
-                        "format": "int32",
-                        "nullable": true
-                    },
                     "lyricsRating": {
                         "maximum": 5,
                         "minimum": 0,
@@ -1870,6 +2559,27 @@
                     "method": {
                         "type": "string",
                         "default": "GET"
+                    }
+                }
+            },
+            "LoginRequest": {
+                "required": [
+                    "login",
+                    "password"
+                ],
+                "type": "object",
+                "properties": {
+                    "login": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "password": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
                     }
                 }
             },
@@ -2224,6 +2934,20 @@
                     }
                 }
             },
+            "RefreshRequest": {
+                "required": [
+                    "refreshToken"
+                ],
+                "type": "object",
+                "properties": {
+                    "refreshToken": {
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
             "ReviewDto": {
                 "required": [
                     "id",
@@ -2424,8 +3148,7 @@
                 "required": [
                     "username",
                     "email",
-                    "bio",
-                    "role"
+                    "bio"
                 ],
                 "type": "object",
                 "properties": {
@@ -2449,7 +3172,9 @@
                         "nullable": true
                     },
                     "role": {
+                        "pattern": "^(User|Admin)$",
                         "type": "string",
+                        "default": null,
                         "nullable": true
                     }
                 }
@@ -2474,7 +3199,8 @@
                         "type": "string"
                     },
                     "email": {
-                        "type": "string"
+                        "type": "string",
+                        "nullable": true
                     },
                     "role": {
                         "type": "string"
@@ -2559,6 +3285,14 @@
                     }
                 }
             }
+        },
+        "securitySchemes": {
+            "Bearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Access token from POST /api/auth/login (or /register, /refresh)."
+            }
         }
     },
     "tags": [
@@ -2576,6 +3310,9 @@
         },
         {
             "name": "Users"
+        },
+        {
+            "name": "Auth"
         }
     ]
 }

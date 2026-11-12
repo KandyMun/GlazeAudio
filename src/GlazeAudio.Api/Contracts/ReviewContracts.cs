@@ -18,12 +18,8 @@ public record ReviewDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt) : Resource;
 
-/// <summary>
-/// Body used to create a review. Until authentication is added the author is given as userId;
-/// later it will come from the logged-in user's token.
-/// </summary>
+/// <summary>Body used to create a review. The author is the logged-in user (from the access token).</summary>
 public record CreateReviewRequest(
-    [property: Required, Range(1, int.MaxValue)] int? UserId,
     [property: Required, Range(0, 5)] int? LyricsRating,
     [property: Required, Range(0, 5)] int? MelodyRating,
     [property: Required, Range(0, 5)] int? MoodRating,

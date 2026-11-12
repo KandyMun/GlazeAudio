@@ -9,6 +9,7 @@ public class GlazeAudioDbContext(DbContextOptions<GlazeAudioDbContext> options) 
     public DbSet<Song> Songs => Set<Song>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,11 +56,24 @@ public class GlazeAudioDbContext(DbContextOptions<GlazeAudioDbContext> options) 
             user.HasIndex(u => u.Username).IsUnique();
             user.HasIndex(u => u.Email).IsUnique();
 
+            user.HasMany(u => u.RefreshTokens)
+                .WithOne(t => t.User)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Deleting an account removes the reviews it wrote.
             user.HasMany(u => u.Reviews)
                 .WithOne(r => r.User)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(token =>
+        {
+            token.Property(t => t.TokenHash).HasMaxLength(64);
+            token.Property(t => t.ReplacedByTokenHash).HasMaxLength(64);
+            token.HasIndex(t => t.TokenHash).IsUnique();
+            token.Ignore(t => t.IsActive);
         });
     }
 }

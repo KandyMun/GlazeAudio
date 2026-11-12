@@ -1,7 +1,9 @@
 using GlazeAudio.Api.Data;
 using GlazeAudio.Api.Endpoints;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Infrastructure.Auth;
 using GlazeAudio.Api.Models;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +26,22 @@ builder.Services.AddDbContext<GlazeAudioDbContext>(options => options
 // Salted PBKDF2 password hashing (from ASP.NET Core Identity, no extra package needed).
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 
+// ---------- Authentication (JWT access tokens) & authorization (roles from the token) ----------
+var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>() ?? new JwtOptions();
+if (jwt.SigningKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:SigningKey must be set to a secret of at least 32 characters. Locally: " +
+        "dotnet user-secrets set \"Jwt:SigningKey\" \"<random secret>\" --project src/GlazeAudio.Api " +
+        "(the setup script does this); in Azure: the App Service setting Jwt__SigningKey.");
+}
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Section));
+builder.Services.AddSingleton<TokenService>();
+builder.Services.AddAuthentication(JwtBearerHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, JwtBearerHandler>(JwtBearerHandler.SchemeName, null);
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthClaims.AdminPolicy, policy => policy.RequireRole(UserRoles.Admin));
+
 // ---------- Error handling: problem+json for 400 / 404 / 422 / 500 ----------
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
@@ -37,10 +55,17 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document,
         "REST API for GlazeAudio – a platform for reviewing music. " +
         "Resources are hierarchical: albums → songs → reviews. Reviews are written by users.";
     return Task.CompletedTask;
-}));
+})
+    .AddBearerSecurity());
 
+// ---------- CORS: the frontend (Azure Static Web Apps / Vite dev server) calls the API from another origin ----------
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+{
+    if (allowedOrigins.Length > 0) policy.WithOrigins(allowedOrigins);
+    else policy.AllowAnyOrigin();   // no list configured: allow any (tokens are sent in a header, not cookies)
+    policy.AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("Location");
+}));
 
 var app = builder.Build();
 
@@ -54,6 +79,8 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapOpenApi();                                    // GET /openapi/v1.json
 app.MapGet("/docs", () => Results.Content(SwaggerUi.Html, "text/html")).ExcludeFromDescription();
@@ -70,6 +97,7 @@ app.MapAlbumEndpoints();
 app.MapSongEndpoints();
 app.MapReviewEndpoints();
 app.MapUserEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 

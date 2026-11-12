@@ -24,8 +24,10 @@ public static class ApiLinks
         ["self"] = new(Url(r, "/api")),
         ["albums"] = new(Url(r, "/api/albums")),
         ["createAlbum"] = new(Url(r, "/api/albums"), "POST"),
-        ["users"] = new(Url(r, "/api/users")),
-        ["register"] = new(Url(r, "/api/users"), "POST"),
+        ["register"] = new(Url(r, "/api/auth/register"), "POST"),
+        ["login"] = new(Url(r, "/api/auth/login"), "POST"),
+        ["refresh"] = new(Url(r, "/api/auth/refresh"), "POST"),
+        ["me"] = new(Url(r, "/api/auth/me")),
         ["docs"] = new(Url(r, "/openapi/v1.json"))
     };
 

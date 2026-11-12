@@ -481,3 +481,13 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
+
+# Azure deployment setup output (names, publish profile, tokens)
+infra/.deploy.env
+infra/.deploy-secrets/
+
+# Frontend build output and local env files
+web/dist/
+web/.env
+web/.env.local
+web/*.tsbuildinfo

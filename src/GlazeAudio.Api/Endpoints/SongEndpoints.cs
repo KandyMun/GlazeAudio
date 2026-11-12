@@ -1,6 +1,7 @@
 using GlazeAudio.Api.Contracts;
 using GlazeAudio.Api.Data;
 using GlazeAudio.Api.Infrastructure;
+using GlazeAudio.Api.Infrastructure.Auth;
 using GlazeAudio.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,21 +32,30 @@ public static class SongEndpoints
 
         group.MapPost("/", Create)
             .WithName("CreateSong")
-            .WithSummary("Add a song to an album")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Add a song to an album (admin)")
             .WithValidation<SongRequest>()
             .Produces<SongDto>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPut("/{songId:int}", Update)
             .WithName("UpdateSong")
-            .WithSummary("Update a song")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Update a song (admin)")
             .WithValidation<SongRequest>()
             .Produces<SongDto>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{songId:int}", Delete)
             .WithName("DeleteSong")
-            .WithSummary("Delete a song")
+            .RequireAuthorization(AuthClaims.AdminPolicy)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .WithSummary("Delete a song (admin)")
             .WithDescription("Deletes the song and all of its reviews. Returns 204 with no body.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound);

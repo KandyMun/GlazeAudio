@@ -60,6 +60,45 @@ namespace GlazeAudio.Api.Migrations
                     b.ToTable("Albums");
                 });
 
+            modelBuilder.Entity("GlazeAudio.Api.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("GlazeAudio.Api.Models.Review", b =>
                 {
                     b.Property<int>("Id")
@@ -185,6 +224,17 @@ namespace GlazeAudio.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("GlazeAudio.Api.Models.RefreshToken", b =>
+                {
+                    b.HasOne("GlazeAudio.Api.Models.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("GlazeAudio.Api.Models.Review", b =>
                 {
                     b.HasOne("GlazeAudio.Api.Models.Song", "Song")
@@ -227,6 +277,8 @@ namespace GlazeAudio.Api.Migrations
 
             modelBuilder.Entity("GlazeAudio.Api.Models.User", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("Reviews");
                 });
 #pragma warning restore 612, 618

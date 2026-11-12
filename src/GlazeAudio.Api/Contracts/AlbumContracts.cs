@@ -15,10 +15,16 @@ public record AlbumDto(
     int ReviewCount,
     double? AverageRating) : Resource;
 
-/// <summary>Body used to create or fully replace an album.</summary>
+/// <summary>
+/// Body used to create or fully replace an album.
+/// CoverUrl is either an absolute http(s) address or a path on the website, e.g. /covers/cobalt-drip.jpg
+/// (the frontend ships a set of cover images under /covers).
+/// </summary>
 public record AlbumRequest(
     [property: Required, StringLength(200, MinimumLength = 1)] string? Title,
     [property: Required, StringLength(200, MinimumLength = 1)] string? Artist,
     [property: Required, Range(1900, 2100)] int? ReleaseYear,
     [property: Required, StringLength(100, MinimumLength = 1)] string? Genre,
-    [property: Url, StringLength(500)] string? CoverUrl);
+    [property: StringLength(500),
+     RegularExpression(@"^(https?://[^\s]+|/[^\s]*)$", ErrorMessage = "Cover URL must be an http(s) address or a path starting with '/'.")]
+    string? CoverUrl);

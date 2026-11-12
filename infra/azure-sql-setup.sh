@@ -3,7 +3,7 @@
 # Use it on any new device after cloning the repo – it does not create anything in Azure.
 #
 #   1. Asks for the SQL login (password input is hidden)
-#   2. Saves the connection string in .NET user-secrets (never committed to git)
+#   2. Saves the connection string (and a JWT signing secret, if missing) in .NET user-secrets (never committed to git)
 #   3. Allows this device's IP in the Azure SQL firewall (if the Azure CLI is installed)
 #   4. Restores packages and applies EF Core migrations + seed data
 #
@@ -47,6 +47,12 @@ fi
 step "Saving connection string to user-secrets"
 dotnet user-secrets set "ConnectionStrings:GlazeAudioDb" "$CONNECTION_STRING" --project "$API_PROJECT" >/dev/null
 echo "Saved as ConnectionStrings:GlazeAudioDb (stored outside the repo, in ~/.microsoft/usersecrets)"
+
+if ! dotnet user-secrets list --project "$API_PROJECT" 2>/dev/null | grep -q '^Jwt:SigningKey'; then
+  JWT_KEY="$(head -c 48 /dev/urandom | base64 | tr -d '\n')"
+  dotnet user-secrets set "Jwt:SigningKey" "$JWT_KEY" --project "$API_PROJECT" >/dev/null
+  echo "Generated a JWT signing secret (Jwt:SigningKey)"
+fi
 
 # ---------------------------------------------------------------- 2. firewall
 step "Firewall rule for this device"
